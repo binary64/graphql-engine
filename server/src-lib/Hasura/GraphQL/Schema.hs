@@ -162,7 +162,7 @@ buildGQLContext
       -- will still be a bottleneck here, even on huge_schema which has many
       -- roles.
       fmap HashMap.fromList
-        $ forConcurrentlyEIO 10 (Set.toList allRoles)
+        $ forConcurrentlyEIO 1 (Set.toList allRoles)
         $ \role -> do
           (role,)
             <$> concurrentlyEIO
