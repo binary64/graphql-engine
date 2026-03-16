@@ -152,7 +152,6 @@ instance MonadTrans WithSchemaSampledFeatureFlags where
 
 instance (MonadResolveSource m) => MonadResolveSource (WithSchemaSampledFeatureFlags m) where
   getPGSourceResolver = lift getPGSourceResolver
-  getMSSQLSourceResolver = lift getMSSQLSourceResolver
 
 withSchemaSampledFeatureFlags :: SchemaSampledFeatureFlags -> WithSchemaSampledFeatureFlags m a -> m a
 withSchemaSampledFeatureFlags ffs = flip runReaderT ffs . unWithSchemaSampledFeatureFlags

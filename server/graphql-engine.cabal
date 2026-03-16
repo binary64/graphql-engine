@@ -511,69 +511,7 @@ library
                      , Hasura.Metadata.Class
 
                      , Hasura.App.State
-                     , Hasura.Backends.BigQuery.Connection
-                     , Hasura.Backends.BigQuery.Execute
-                     , Hasura.Backends.BigQuery.DDL
-                     , Hasura.Backends.BigQuery.DDL.BoolExp
-                     , Hasura.Backends.BigQuery.DDL.RunSQL
-                     , Hasura.Backends.BigQuery.DDL.Source
-                     , Hasura.Backends.BigQuery.DDL.ComputedField
-                     , Hasura.Backends.BigQuery.FromIr
-                     , Hasura.Backends.BigQuery.Instances.API
-                     , Hasura.Backends.BigQuery.Instances.Execute
-                     , Hasura.Backends.BigQuery.Instances.Schema
-                     , Hasura.Backends.BigQuery.Instances.SchemaCache
-                     , Hasura.Backends.BigQuery.Instances.Transport
-                     , Hasura.Backends.BigQuery.Instances.Types
-                     , Hasura.Backends.BigQuery.Instances.Metadata
-                     , Hasura.Backends.BigQuery.Meta
-                     , Hasura.Backends.BigQuery.Name
-                     , Hasura.Backends.BigQuery.Parser.Scalars
-                     , Hasura.Backends.BigQuery.Plan
-                     , Hasura.Backends.BigQuery.Schema.Introspection
-                     , Hasura.Backends.BigQuery.Source
-                     , Hasura.Backends.BigQuery.ToQuery
-                     , Hasura.Backends.BigQuery.Types
 
-                     , Hasura.Backends.MSSQL.Connection
-                     , Hasura.Backends.MSSQL.DDL
-                     , Hasura.Backends.MSSQL.DDL.BoolExp
-                     , Hasura.Backends.MSSQL.DDL.EventTrigger
-                     , Hasura.Backends.MSSQL.DDL.RunSQL
-                     , Hasura.Backends.MSSQL.DDL.Source
-                     , Hasura.Backends.MSSQL.DDL.Source.Version
-                     , Hasura.Backends.MSSQL.Execute.QueryTags
-                     , Hasura.Backends.MSSQL.Execute.Delete
-                     , Hasura.Backends.MSSQL.Execute.Insert
-                     , Hasura.Backends.MSSQL.Execute.Update
-                     , Hasura.Backends.MSSQL.FromIr
-                     , Hasura.Backends.MSSQL.FromIr.Constants
-                     , Hasura.Backends.MSSQL.FromIr.Delete
-                     , Hasura.Backends.MSSQL.FromIr.Expression
-                     , Hasura.Backends.MSSQL.FromIr.Insert
-                     , Hasura.Backends.MSSQL.FromIr.MutationResponse
-                     , Hasura.Backends.MSSQL.FromIr.Query
-                     , Hasura.Backends.MSSQL.FromIr.SelectIntoTempTable
-                     , Hasura.Backends.MSSQL.FromIr.Update
-                     , Hasura.Backends.MSSQL.Instances.API
-                     , Hasura.Backends.MSSQL.Instances.Execute
-                     , Hasura.Backends.MSSQL.Instances.Metadata
-                     , Hasura.Backends.MSSQL.Instances.Schema
-                     , Hasura.Backends.MSSQL.Instances.SchemaCache
-                     , Hasura.Backends.MSSQL.Instances.Transport
-                     , Hasura.Backends.MSSQL.Instances.Types
-                     , Hasura.Backends.MSSQL.Meta
-                     , Hasura.Backends.MSSQL.Plan
-                     , Hasura.Backends.MSSQL.Schema.IfMatched
-                     , Hasura.Backends.MSSQL.Schema.Introspection
-                     , Hasura.Backends.MSSQL.SQL.Value
-                     , Hasura.Backends.MSSQL.SQL.Error
-                     , Hasura.Backends.MSSQL.ToQuery
-                     , Hasura.Backends.MSSQL.Types
-                     , Hasura.Backends.MSSQL.Types.Insert
-                     , Hasura.Backends.MSSQL.Types.Instances
-                     , Hasura.Backends.MSSQL.Types.Internal
-                     , Hasura.Backends.MSSQL.Types.Update
                      , Hasura.Backends.Postgres.Connection
                      , Hasura.Backends.Postgres.Connection.Connect
                      , Hasura.Backends.Postgres.Connection.MonadTx
@@ -1192,8 +1130,6 @@ test-suite graphql-engine-tests
     Hasura.AppSpec
     Hasura.Authentication.SessionSpec
     Hasura.Base.Error.TestInstances
-    Hasura.Backends.BigQuery.SourceSpec
-    Hasura.Backends.BigQuery.TypesSpec
     Hasura.Backends.DataConnector.Adapter.TypesSpec
     Hasura.Backends.DataConnector.API.V0.AggregateSpec
     Hasura.Backends.DataConnector.API.V0.CapabilitiesSpec
@@ -1291,7 +1227,6 @@ test-suite graphql-engine-test-mssql
   main-is: Main.hs
   other-modules:
     Database.MSSQL.TransactionSpec
-    Hasura.Backends.MSSQL.ErrorSpec
     SpecHook
 
 test-suite graphql-engine-test-postgres

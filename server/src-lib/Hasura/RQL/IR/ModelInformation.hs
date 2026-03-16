@@ -6,8 +6,6 @@ module Hasura.RQL.IR.ModelInformation
     getModelInfoPartfromModelNames,
     -- Postgres
     getMutationInsertArgumentModelNamesPostgres,
-    -- MSSQL
-    getMutationInsertArgumentModelNamesMSSQL,
     -- DataConnector
     getMutationInsertArgumentModelNamesDC,
     -- Common
@@ -21,7 +19,6 @@ where
 import Data.List (nub)
 import Data.List.NonEmpty qualified as NE
 import Data.Text.Extended
-import Hasura.Backends.MSSQL.Types qualified as MSSQL
 import Hasura.Backends.Postgres.SQL.Types
 import Hasura.Backends.Postgres.Types.Insert
 import Hasura.LogicalModel.IR
@@ -259,8 +256,6 @@ getArgumentModelNamesGen sourceName modelSourceType args = case args of
             backendType = reify $ backendTag @b'
             modelSourceType' = case backendType of
               Postgres _ -> ModelSourceTypePostgres
-              MSSQL -> ModelSourceTypeMSSQL
-              BigQuery -> ModelSourceTypeBigQuery
               DataConnector -> ModelSourceTypeDataConnector
         modify $ (++) [ModelNameInfo (toTxt $ tableName, ModelTypeRemoteSchema, sourceName', modelSourceType')]
 
@@ -689,26 +684,6 @@ getMutationInsertArgumentModelNamesPostgres sourceName modelSourceType insertOpe
           let argModelBoolExp = cp1udFilter whereClause
           (_, res') <- flip runStateT [] $ getArgumentModelNamesGen sourceName modelSourceType argModelBoolExp
           modify $ (++) res'
-
--- Similar to `getMutationInsertArgumentModelNamesPostgres` but for MSSQL
-getMutationInsertArgumentModelNamesMSSQL ::
-  forall f m.
-  (MonadState [ModelNameInfo] m) =>
-  SourceName ->
-  ModelSourceType ->
-  AnnotatedInsertData 'MSSQL f (UnpreparedValue 'MSSQL) ->
-  m ()
-getMutationInsertArgumentModelNamesMSSQL sourceName modelSourceType insertOperation = do
-  let (modelName, modelType) = (MSSQL.tableName (_aiTableName $ insertOperation), ModelTypeTable)
-  modify $ (++) [ModelNameInfo (modelName, modelType, sourceName, modelSourceType)]
-
-  let onConflictClause = MSSQL._biIfMatched $ _aiBackendInsert $ insertOperation
-  case onConflictClause of
-    Nothing -> pure ()
-    Just conflict -> do
-      let argModelBoolExp = MSSQL._imConditions conflict
-      (_, res') <- flip runStateT [] $ getArgumentModelNamesGen sourceName modelSourceType $ argModelBoolExp
-      modify $ (++) res'
 
 -- Similar to `getMutationInsertArgumentModelNamesPostgres` but for DataConnector. Note: DataConnector doesn't have any
 -- conflict clause.

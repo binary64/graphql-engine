@@ -50,7 +50,7 @@ module Hasura.App
     setCatalogStateTx,
     mkHGEServer,
     mkPgSourceResolver,
-    mkMSSQLSourceResolver,
+
   )
 where
 
@@ -82,14 +82,12 @@ import Data.Set.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock qualified as Clock
-import Database.MSSQL.Pool qualified as MSPool
 import Database.PG.Query qualified as PG
 import Database.PG.Query qualified as Q
 import GHC.AssertNF.CPP
 import Hasura.App.State
 import Hasura.Authentication.Role (adminRoleName)
 import Hasura.Authentication.User (ExtraUserInfo (..), UserInfo (..))
-import Hasura.Backends.MSSQL.Connection
 import Hasura.Backends.Postgres.Connection
 import Hasura.Base.Error
 import Hasura.ClientCredentials (getEEClientCredentialsTx, setEEClientCredentialsTx)
@@ -545,7 +543,6 @@ initialiseAppContext env serveOptions AppInit {..} = do
       env
       logger
       (mkPgSourceResolver pgLogger)
-      mkMSSQLSourceResolver
       aiMetadataWithResourceVersion
       cacheStaticConfig
       cacheDynamicConfig
@@ -608,7 +605,6 @@ buildFirstSchemaCache ::
   Env.Environment ->
   Logger Hasura ->
   SourceResolver ('Postgres 'Vanilla) ->
-  SourceResolver ('MSSQL) ->
   MetadataWithResourceVersion ->
   CacheStaticConfig ->
   CacheDynamicConfig ->
@@ -619,12 +615,11 @@ buildFirstSchemaCache
   env
   logger
   pgSourceResolver
-  mssqlSourceResolver
   metadataWithVersion
   cacheStaticConfig
   cacheDynamicConfig
   httpManager = do
-    let cacheBuildParams = CacheBuildParams httpManager pgSourceResolver mssqlSourceResolver cacheStaticConfig
+    let cacheBuildParams = CacheBuildParams httpManager pgSourceResolver cacheStaticConfig
     result <-
       runExceptT
         $ runCacheBuild cacheBuildParams
@@ -796,7 +791,6 @@ instance WS.MonadWSLog AppM where
 
 instance MonadResolveSource AppM where
   getPGSourceResolver = asks (mkPgSourceResolver . _lsPgLogger . appEnvLoggers)
-  getMSSQLSourceResolver = return mkMSSQLSourceResolver
 
 instance MonadQueryTags AppM where
   createQueryTags _attributes _qtSourceConfig = return $ emptyQueryTagsComment
@@ -1529,19 +1523,4 @@ mkPgSourceResolver pgLogger env sourceName config = runExceptT do
   connInfoWithFinalizer <- liftIO $ mkConnInfoWithFinalizer connInfo (pure ())
   pure $ PGSourceConfig pgExecCtx connInfoWithFinalizer Nothing mempty (pccExtensionsSchema config) mempty ConnTemplate_NotApplicable
 
-mkMSSQLSourceResolver :: SourceResolver 'MSSQL
-mkMSSQLSourceResolver env _name (MSSQLConnConfiguration connInfo _) = runExceptT do
-  let MSSQLConnectionInfo iConnString poolSettings isolationLevel = connInfo
-      connOptions = case poolSettings of
-        MSSQLPoolSettingsPool (MSSQLPoolConnectionSettings {..}) ->
-          MSPool.ConnectionOptionsPool
-            $ MSPool.PoolOptions
-              { poConnections = fromMaybe defaultMSSQLMaxConnections mpsMaxConnections,
-                poStripes = 1,
-                poIdleTime = mpsIdleTimeout
-              }
-        MSSQLPoolSettingsNoPool -> MSPool.ConnectionOptionsNoPool
-  (connString, mssqlPool) <- createMSSQLPool iConnString connOptions env
-  let mssqlExecCtx = mkMSSQLExecCtx isolationLevel mssqlPool NeverResizePool
-      numReadReplicas = 0
-  pure $ MSSQLSourceConfig connString mssqlExecCtx numReadReplicas
+

@@ -39,8 +39,6 @@ data PostgresKind
 -- | An enum that represents each backend we support.
 data BackendType
   = Postgres PostgresKind
-  | MSSQL
-  | BigQuery
   | DataConnector
   deriving stock (Show, Eq, Ord, Generic)
   deriving anyclass (Hashable)
@@ -50,8 +48,6 @@ instance Witch.From BackendType NonEmptyText where
   from (Postgres Vanilla) = [nonEmptyTextQQ|postgres|]
   from (Postgres Citus) = [nonEmptyTextQQ|citus|]
   from (Postgres Cockroach) = [nonEmptyTextQQ|cockroach|]
-  from MSSQL = [nonEmptyTextQQ|mssql|]
-  from BigQuery = [nonEmptyTextQQ|bigquery|]
   from DataConnector = [nonEmptyTextQQ|dataconnector|]
 
 instance ToTxt BackendType where
@@ -76,8 +72,6 @@ data BackendSourceKind (b :: BackendType) where
   PostgresVanillaKind :: BackendSourceKind ('Postgres 'Vanilla)
   PostgresCitusKind :: BackendSourceKind ('Postgres 'Citus)
   PostgresCockroachKind :: BackendSourceKind ('Postgres 'Cockroach)
-  MSSQLKind :: BackendSourceKind 'MSSQL
-  BigQueryKind :: BackendSourceKind 'BigQuery
   DataConnectorKind :: DataConnectorName -> BackendSourceKind 'DataConnector
 
 deriving instance Show (BackendSourceKind b)
@@ -87,13 +81,9 @@ deriving instance Eq (BackendSourceKind b)
 deriving instance Ord (BackendSourceKind b)
 
 instance Witch.From (BackendSourceKind b) NonEmptyText where
-  -- All cases are specified explicitly here to ensure compiler warnings highlight
-  -- this area for consideration and update if another BackendType is added
   from k@PostgresVanillaKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
   from k@PostgresCitusKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
   from k@PostgresCockroachKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
-  from k@MSSQLKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
-  from k@BigQueryKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
   from (DataConnectorKind dataConnectorName) = Witch.into @NonEmptyText dataConnectorName
 
 instance ToTxt (BackendSourceKind b) where
@@ -115,12 +105,6 @@ instance FromJSON (BackendSourceKind ('Postgres 'Citus)) where
 instance FromJSON (BackendSourceKind ('Postgres 'Cockroach)) where
   parseJSON = mkParseStaticBackendSourceKind PostgresCockroachKind
 
-instance FromJSON (BackendSourceKind ('MSSQL)) where
-  parseJSON = mkParseStaticBackendSourceKind MSSQLKind
-
-instance FromJSON (BackendSourceKind ('BigQuery)) where
-  parseJSON = mkParseStaticBackendSourceKind BigQueryKind
-
 instance FromJSON (BackendSourceKind ('DataConnector)) where
   parseJSON v = DataConnectorKind <$> parseJSON v
 
@@ -141,12 +125,6 @@ instance HasCodec (BackendSourceKind ('Postgres 'Citus)) where
 
 instance HasCodec (BackendSourceKind ('Postgres 'Cockroach)) where
   codec = mkCodecStaticBackendSourceKind PostgresCockroachKind
-
-instance HasCodec (BackendSourceKind ('MSSQL)) where
-  codec = mkCodecStaticBackendSourceKind MSSQLKind
-
-instance HasCodec (BackendSourceKind ('BigQuery)) where
-  codec = mkCodecStaticBackendSourceKind BigQueryKind
 
 instance HasCodec (BackendSourceKind ('DataConnector)) where
   codec = bimapCodec dec enc gqlNameCodec
@@ -195,8 +173,6 @@ supportedBackends =
   [ Postgres Vanilla,
     Postgres Citus,
     Postgres Cockroach,
-    MSSQL,
-    BigQuery,
     DataConnector
   ]
 
@@ -228,6 +204,4 @@ backendTypeFromBackendSourceKind = \case
   PostgresVanillaKind -> Postgres Vanilla
   PostgresCitusKind -> Postgres Citus
   PostgresCockroachKind -> Postgres Cockroach
-  MSSQLKind -> MSSQL
-  BigQueryKind -> BigQuery
   DataConnectorKind _ -> DataConnector

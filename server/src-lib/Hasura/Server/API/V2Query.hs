@@ -17,10 +17,8 @@ import Data.Text qualified as T
 import GHC.Generics.Extended (constrName)
 import Hasura.App.State
 import Hasura.Authentication.User (UserInfoM)
-import Hasura.Backends.BigQuery.DDL.RunSQL qualified as BigQuery
 import Hasura.Backends.DataConnector.Adapter.RunSQL qualified as DataConnector
 import Hasura.Backends.DataConnector.Adapter.Types (DataConnectorName, mkDataConnectorName)
-import Hasura.Backends.MSSQL.DDL.RunSQL qualified as MSSQL
 import Hasura.Backends.Postgres.DDL.RunSQL qualified as Postgres
 import Hasura.Base.Error
 import Hasura.EncJSON
@@ -59,12 +57,9 @@ data RQLQuery
   | RQDelete !DeleteQuery
   | RQCount !CountQuery
   | RQRunSql !Postgres.RunSQL
-  | RQMssqlRunSql !MSSQL.MSSQLRunSQL
   | RQCitusRunSql !Postgres.RunSQL
   | RQCockroachRunSql !Postgres.RunSQL
-  | RQBigqueryRunSql !BigQuery.BigQueryRunSQL
   | RQDataConnectorRunSql !DataConnectorName !DataConnector.DataConnectorRunSQL
-  | RQBigqueryDatabaseInspection !BigQuery.BigQueryRunSQL
   | RQBulk ![RQLQuery]
   | -- | A variant of 'RQBulk' that runs a bulk of read-only queries concurrently.
     --   Asserts that queries on this lists are not modifying the schema.
@@ -90,12 +85,9 @@ instance FromJSON RQLQuery where
       -- string interpolation easier in the cross-backend tests.
       "run_sql" -> RQRunSql <$> args
       "pg_run_sql" -> RQRunSql <$> args
-      "mssql_run_sql" -> RQMssqlRunSql <$> args
       "citus_run_sql" -> RQCitusRunSql <$> args
       "cockroach_run_sql" -> RQCockroachRunSql <$> args
-      "bigquery_run_sql" -> RQBigqueryRunSql <$> args
       (dcNameFromRunSql -> Just t') -> RQDataConnectorRunSql t' <$> args
-      "bigquery_database_inspection" -> RQBigqueryDatabaseInspection <$> args
       "bulk" -> RQBulk <$> args
       "concurrent_bulk" -> RQConcurrentBulk <$> args
       _ -> fail $ "Unrecognised RQLQuery type: " <> T.unpack t
@@ -162,10 +154,7 @@ queryModifiesSchema = \case
   RQRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
   RQCitusRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
   RQCockroachRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
-  RQMssqlRunSql q -> MSSQL.isSchemaCacheBuildRequiredRunSQL q
-  RQBigqueryRunSql _ -> False
   RQDataConnectorRunSql _ _ -> False
-  RQBigqueryDatabaseInspection _ -> False
   RQBulk l -> any queryModifiesSchema l
   RQConcurrentBulk l -> any queryModifiesSchema l
 
@@ -189,12 +178,9 @@ runQueryM sqlGen rq = Tracing.newSpan (T.pack $ constrName rq) Tracing.SKInterna
   RQDelete q -> runDelete sqlGen q
   RQCount q -> runCount q
   RQRunSql q -> Postgres.runRunSQL @'Vanilla sqlGen q
-  RQMssqlRunSql q -> MSSQL.runSQL q
   RQCitusRunSql q -> Postgres.runRunSQL @'Citus sqlGen q
   RQCockroachRunSql q -> Postgres.runRunSQL @'Cockroach sqlGen q
-  RQBigqueryRunSql q -> BigQuery.runSQL q
   RQDataConnectorRunSql t q -> DataConnector.runSQL t q
-  RQBigqueryDatabaseInspection q -> BigQuery.runDatabaseInspection q
   RQBulk l -> encJFromList <$> indexedMapM (runQueryM sqlGen) l
   RQConcurrentBulk l -> do
     when (queryModifiesSchema rq)
@@ -211,9 +197,6 @@ queryModifiesUserDB = \case
   RQRunSql runsql -> not (Postgres.isReadOnly runsql)
   RQCitusRunSql runsql -> not (Postgres.isReadOnly runsql)
   RQCockroachRunSql runsql -> not (Postgres.isReadOnly runsql)
-  RQMssqlRunSql _ -> True
-  RQBigqueryRunSql _ -> True
   RQDataConnectorRunSql _ _ -> True
-  RQBigqueryDatabaseInspection _ -> False
   RQBulk q -> any queryModifiesUserDB q
   RQConcurrentBulk _ -> False

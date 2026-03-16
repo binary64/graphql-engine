@@ -209,27 +209,21 @@ type SourceResolver b =
 
 class (Monad m) => MonadResolveSource m where
   getPGSourceResolver :: m (SourceResolver ('Postgres 'Vanilla))
-  getMSSQLSourceResolver :: m (SourceResolver 'MSSQL)
 
 instance (MonadResolveSource m) => MonadResolveSource (ExceptT e m) where
   getPGSourceResolver = lift getPGSourceResolver
-  getMSSQLSourceResolver = lift getMSSQLSourceResolver
 
 instance (MonadResolveSource m) => MonadResolveSource (ReaderT r m) where
   getPGSourceResolver = lift getPGSourceResolver
-  getMSSQLSourceResolver = lift getMSSQLSourceResolver
 
 instance (MonadResolveSource m) => MonadResolveSource (StateT s m) where
   getPGSourceResolver = lift getPGSourceResolver
-  getMSSQLSourceResolver = lift getMSSQLSourceResolver
 
 instance (MonadResolveSource m) => MonadResolveSource (Tracing.TraceT m) where
   getPGSourceResolver = lift getPGSourceResolver
-  getMSSQLSourceResolver = lift getMSSQLSourceResolver
 
 instance (MonadResolveSource m) => MonadResolveSource (PG.TxET QErr m) where
   getPGSourceResolver = lift getPGSourceResolver
-  getMSSQLSourceResolver = lift getMSSQLSourceResolver
 
 -- FIXME: why is this here?
 data MaintenanceModeVersion

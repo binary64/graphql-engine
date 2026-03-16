@@ -8,7 +8,6 @@ import Data.Aeson
 import Data.Set.NonEmpty qualified as NE
 import Data.Time.Clock qualified as Time
 import Hasura.Authentication.User (UserInfo)
-import Hasura.Backends.MSSQL.DDL.EventTrigger qualified as MSSQL
 import Hasura.Backends.Postgres.DDL.EventTrigger qualified as Postgres
 import Hasura.Base.Error
 import Hasura.Prelude
@@ -396,57 +395,7 @@ instance BackendEventTrigger ('Postgres 'Cockroach) where
   fetchEventInvocationLogs = Postgres.fetchEventInvocationLogs
   fetchEventById = Postgres.fetchEventById
 
-instance BackendEventTrigger 'MSSQL where
-  insertManualEvent = MSSQL.insertManualEvent
-  fetchUndeliveredEvents = MSSQL.fetchUndeliveredEvents
-  setRetry = MSSQL.setRetry
-  recordSuccess = MSSQL.recordSuccess
-  getMaintenanceModeVersion = MSSQL.getMaintenanceModeVersion
-  recordError = MSSQL.recordError
-  recordError' = MSSQL.recordError'
-  dropTriggerAndArchiveEvents = MSSQL.dropTriggerAndArchiveEvents
-  redeliverEvent = MSSQL.redeliverEvent
-  unlockEventsInSource = MSSQL.unlockEventsInSource
-  dropDanglingSQLTrigger = MSSQL.dropDanglingSQLTrigger
-  createTableEventTrigger = MSSQL.createTableEventTrigger
-  createMissingSQLTriggers = MSSQL.createMissingSQLTriggers
-  checkIfTriggerExists = MSSQL.checkIfTriggerExists
-  addCleanupSchedules = MSSQL.addCleanupSchedules
-  deleteAllScheduledCleanups = MSSQL.deleteAllScheduledCleanups
-  getCleanupEventsForDeletion = MSSQL.getCleanupEventsForDeletion
-  updateCleanupEventStatusToDead = MSSQL.updateCleanupEventStatusToDead
-  updateCleanupEventStatusToPaused = MSSQL.updateCleanupEventStatusToPaused
-  updateCleanupEventStatusToCompleted = MSSQL.updateCleanupEventStatusToCompleted
-  deleteEventTriggerLogs = MSSQL.deleteEventTriggerLogs
-  fetchEventInvocationLogs = MSSQL.fetchEventInvocationLogs
-  fetchEventLogs = MSSQL.fetchEventLogs
-  fetchEventById = MSSQL.fetchEventById
 
-instance BackendEventTrigger 'BigQuery where
-  insertManualEvent _ _ _ _ _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  fetchUndeliveredEvents _ _ _ _ _ = throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  setRetry _ _ _ _ = throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  recordSuccess _ _ _ _ = runExceptT $ throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  getMaintenanceModeVersion _ = throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  recordError _ _ _ _ _ = runExceptT $ throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  recordError' _ _ _ _ _ = runExceptT $ throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  dropTriggerAndArchiveEvents _ _ _ = throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  dropDanglingSQLTrigger _ _ _ _ = throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  redeliverEvent _ _ = throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  unlockEventsInSource _ _ = runExceptT $ throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  createTableEventTrigger _ _ _ _ _ _ _ _ = runExceptT $ throw400 NotSupported "Event triggers are not supported for BigQuery sources"
-  createMissingSQLTriggers _ _ _ _ _ _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  checkIfTriggerExists _ _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  addCleanupSchedules _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  deleteAllScheduledCleanups _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  getCleanupEventsForDeletion _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  updateCleanupEventStatusToDead _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  updateCleanupEventStatusToPaused _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  updateCleanupEventStatusToCompleted _ _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  deleteEventTriggerLogs _ _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  fetchEventLogs _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  fetchEventInvocationLogs _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
-  fetchEventById _ _ = throw400 NotSupported $ "Event triggers are not supported for BigQuery sources"
 
 --------------------------------------------------------------------------------
 

@@ -208,7 +208,6 @@ $(makeLenses ''BuildOutputs)
 data CacheBuildParams = CacheBuildParams
   { _cbpManager :: HTTP.Manager,
     _cbpPGSourceResolver :: SourceResolver ('Postgres 'Vanilla),
-    _cbpMSSQLSourceResolver :: SourceResolver 'MSSQL,
     _cbpStaticConfig :: CacheStaticConfig
   }
 
@@ -233,7 +232,6 @@ instance ProvidesNetwork CacheBuild where
 
 instance MonadResolveSource CacheBuild where
   getPGSourceResolver = asks _cbpPGSourceResolver
-  getMSSQLSourceResolver = asks _cbpMSSQLSourceResolver
 
 runCacheBuild ::
   ( MonadIO m,
@@ -259,7 +257,6 @@ runCacheBuildM m = do
     CacheBuildParams
       <$> askHTTPManager
       <*> getPGSourceResolver
-      <*> getMSSQLSourceResolver
       <*> askCacheStaticConfig
   runCacheBuild params m
 
