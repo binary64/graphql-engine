@@ -298,7 +298,7 @@ refreshSchemaCache
         let dynamicConfig = buildCacheDynamicConfig appContext
         -- the instance which triggered the schema sync event would have stored
         -- the source introspection, hence we can ignore it here
-        (msg, cache, _, _sourcesIntrospection, _schemaRegistryAction) <-
+        (msg, cache, _, _sourcesIntrospection) <-
           runCacheRWT dynamicConfig rebuildableCache $ do
             schemaCache <- askSchemaCache
             let engineResourceVersion = scMetadataResourceVersion schemaCache

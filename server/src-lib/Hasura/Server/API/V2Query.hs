@@ -44,7 +44,7 @@ import Hasura.RQL.DML.Update
 import Hasura.RQL.Types.BackendType
 import Hasura.RQL.Types.Common
 import Hasura.RQL.Types.Metadata
-import Hasura.RQL.Types.SchemaCache (MetadataWithResourceVersion (MetadataWithResourceVersion), SchemaCache (scInconsistentObjs))
+import Hasura.RQL.Types.SchemaCache (MetadataWithResourceVersion (MetadataWithResourceVersion))
 import Hasura.RQL.Types.SchemaCache.Build
 import Hasura.RQL.Types.Source
 import Hasura.Server.Types
@@ -124,7 +124,7 @@ runQuery appContext schemaCache rqlQuery = do
 
   let dynamicConfig = buildCacheDynamicConfig appContext
   MetadataWithResourceVersion metadata currentResourceVersion <- Tracing.newSpan "fetchMetadata" Tracing.SKInternal $ liftEitherM fetchMetadata
-  ((result, updatedMetadata), modSchemaCache, invalidations, sourcesIntrospection, schemaRegistryAction) <-
+  ((result, updatedMetadata), modSchemaCache, invalidations, sourcesIntrospection) <-
     runQueryM (acSQLGenCtx appContext) rqlQuery
       -- We can use defaults here unconditionally, since there is no MD export function in V2Query
       & runMetadataT metadata (acMetadataDefaults appContext)
@@ -142,16 +142,10 @@ runQuery appContext schemaCache rqlQuery = do
         Tracing.newSpan "storeSourcesIntrospection" Tracing.SKInternal
           $ saveSourcesIntrospection (_lsLogger appEnvLoggers) sourcesIntrospection newResourceVersion
 
-        (_, modSchemaCache', _, _, _) <-
+        (_, modSchemaCache', _, _) <-
           Tracing.newSpan "setMetadataResourceVersionInSchemaCache" Tracing.SKInternal
             $ setMetadataResourceVersionInSchemaCache newResourceVersion
             & runCacheRWT dynamicConfig modSchemaCache
-
-        -- run schema registry action
-        Tracing.newSpan "runSchemaRegistryAction" Tracing.SKInternal
-          $ for_ schemaRegistryAction
-          $ \action -> do
-            liftIO $ action newResourceVersion (scInconsistentObjs (lastBuiltSchemaCache modSchemaCache')) updatedMetadata
 
         pure (result, modSchemaCache')
       MaintenanceModeEnabled () ->

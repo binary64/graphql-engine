@@ -140,7 +140,7 @@ runMetadataQuery appContext schemaCache closeWebsocketsOnMetadataChange RQLMetad
           then emptyMetadataDefaults
           else acMetadataDefaults appContext
   let dynamicConfig = buildCacheDynamicConfig appContext
-  ((r, modMetadata), modSchemaCache, cacheInvalidations, sourcesIntrospection, schemaRegistryAction) <-
+  ((r, modMetadata), modSchemaCache, cacheInvalidations, sourcesIntrospection) <-
     runMetadataQueryM
       (acEnvironment appContext)
       (acSchemaSampledFeatureFlags appContext)
@@ -182,13 +182,7 @@ runMetadataQuery appContext schemaCache closeWebsocketsOnMetadataChange RQLMetad
         Tracing.newSpan "storeSourcesIntrospection" Tracing.SKInternal
           $ saveSourcesIntrospection logger sourcesIntrospection newResourceVersion
 
-        -- run the schema registry action
-        Tracing.newSpan "runSchemaRegistryAction" Tracing.SKInternal
-          $ for_ schemaRegistryAction
-          $ \action -> do
-            liftIO $ action newResourceVersion (scInconsistentObjs (lastBuiltSchemaCache modSchemaCache)) modMetadata
-
-        (_, modSchemaCache', _, _, _) <-
+        (_, modSchemaCache', _, _) <-
           Tracing.newSpan "setMetadataResourceVersionInSchemaCache" Tracing.SKInternal
             $ setMetadataResourceVersionInSchemaCache newResourceVersion
             & runCacheRWT dynamicConfig modSchemaCache

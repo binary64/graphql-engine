@@ -126,7 +126,7 @@ import Hasura.RQL.DDL.Schema.Cache
 import Hasura.RQL.DDL.Schema.Cache.Common
 import Hasura.RQL.DDL.Schema.Cache.Config
 import Hasura.RQL.DDL.Schema.Catalog
-import Hasura.RQL.DDL.SchemaRegistry qualified as SchemaRegistry
+-- import Hasura.RQL.DDL.SchemaRegistry qualified as SchemaRegistry
 import Hasura.RQL.Types.Allowlist
 import Hasura.RQL.Types.Backend
 import Hasura.RQL.Types.BackendType
@@ -550,7 +550,6 @@ initialiseAppContext env serveOptions AppInit {..} = do
       cacheStaticConfig
       cacheDynamicConfig
       appEnvManager
-      Nothing
   -- Initialise the 'AppStateRef' from 'RebuildableSchemaCacheRef' and 'RebuildableAppContext'.
   initialiseAppStateRef aiTLSAllowListRef Nothing appEnvServerMetrics rebuildableSchemaCache rebuildableAppCtx
 
@@ -614,7 +613,6 @@ buildFirstSchemaCache ::
   CacheStaticConfig ->
   CacheDynamicConfig ->
   HTTP.Manager ->
-  Maybe SchemaRegistry.SchemaRegistryContext ->
   m RebuildableSchemaCache
 buildFirstSchemaCache
   disableNativeQueryValidation
@@ -625,13 +623,12 @@ buildFirstSchemaCache
   metadataWithVersion
   cacheStaticConfig
   cacheDynamicConfig
-  httpManager
-  mSchemaRegistryContext = do
+  httpManager = do
     let cacheBuildParams = CacheBuildParams httpManager pgSourceResolver mssqlSourceResolver cacheStaticConfig
     result <-
       runExceptT
         $ runCacheBuild cacheBuildParams
-        $ buildRebuildableSchemaCache logger env disableNativeQueryValidation metadataWithVersion cacheDynamicConfig mSchemaRegistryContext
+        $ buildRebuildableSchemaCache logger env disableNativeQueryValidation metadataWithVersion cacheDynamicConfig
     result `onLeft` \err -> do
       -- TODO: we used to bundle the first schema cache build with the catalog
       -- migration, using the same error handler for both, meaning that an
