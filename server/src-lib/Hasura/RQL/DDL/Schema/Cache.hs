@@ -462,7 +462,9 @@ buildSchemaCacheRule logger env disableNativeQueryValidation = proc (MetadataWit
       -- REST endpoints stubbed out for memory reduction
       resolvedEndpoints = mempty :: HashMap EndpointName (EndpointMetadata GQLQueryWithText)
       endpointCollectedInfo = mempty :: Seq CollectItem
-      (cronTriggersMap, cronTriggersCollectedInfo) = runIdentity $ runWriterT $ buildCronTriggers (InsOrdHashMap.elems _metaCronTriggers)
+      -- Cron triggers stubbed out for memory reduction
+      cronTriggersMap = mempty
+      cronTriggersCollectedInfo = mempty :: Seq CollectItem
       (openTelemetryInfo, openTelemetryCollectedInfo) = runIdentity $ runWriterT $ buildOpenTelemetry _metaOpenTelemetryConfig
 
       duplicateVariables :: EndpointMetadata a -> Bool
@@ -1643,13 +1645,13 @@ buildSchemaCacheRule logger env disableNativeQueryValidation = proc (MetadataWit
                       triggerDefinition
                       primaryKey
 
-    buildCronTriggers ::
+    _buildCronTriggers ::
       (MonadWriter (Seq CollectItem) m) =>
       [CronTriggerMetadata] ->
       m (HashMap TriggerName CronTriggerInfo)
-    buildCronTriggers = buildInfoMapM ctName mkCronTriggerMetadataObject buildCronTrigger
+    _buildCronTriggers = buildInfoMapM ctName mkCronTriggerMetadataObject _buildCronTrigger
       where
-        buildCronTrigger cronTrigger = do
+        _buildCronTrigger cronTrigger = do
           let triggerName = triggerNameToTxt $ ctName cronTrigger
               addCronTriggerContext e = "in cron trigger " <> triggerName <> ": " <> e
           withRecordInconsistencyM (mkCronTriggerMetadataObject cronTrigger)
