@@ -459,7 +459,9 @@ buildSchemaCacheRule logger env disableNativeQueryValidation = proc (MetadataWit
     Inc.cache buildOutputsAndSchema -< (metadataDep, dynamicConfig, invalidationKeysDep, storedIntrospection)
 
   let storedIntrospectionStatus = buildSourcesIntrospectionStatus _metaSources _metaRemoteSchemas storedIntrospections
-      (resolvedEndpoints, endpointCollectedInfo) = runIdentity $ runWriterT $ buildRESTEndpoints _metaQueryCollections (InsOrdHashMap.elems _metaRestEndpoints)
+      -- REST endpoints stubbed out for memory reduction
+      resolvedEndpoints = mempty :: HashMap EndpointName (EndpointMetadata GQLQueryWithText)
+      endpointCollectedInfo = mempty :: Seq CollectItem
       (cronTriggersMap, cronTriggersCollectedInfo) = runIdentity $ runWriterT $ buildCronTriggers (InsOrdHashMap.elems _metaCronTriggers)
       (openTelemetryInfo, openTelemetryCollectedInfo) = runIdentity $ runWriterT $ buildOpenTelemetry _metaOpenTelemetryConfig
 
@@ -1413,12 +1415,12 @@ buildSchemaCacheRule logger env disableNativeQueryValidation = proc (MetadataWit
             . withRecordInconsistencyM (MetadataObject (MOOpenTelemetry objTy) (toJSON fld))
             . liftEither
 
-    buildRESTEndpoints ::
+    _buildRESTEndpoints ::
       (MonadWriter (Seq CollectItem) m) =>
       QueryCollections ->
       [CreateEndpoint] ->
       m (HashMap EndpointName (EndpointMetadata GQLQueryWithText))
-    buildRESTEndpoints collections endpoints = buildInfoMapM _ceName mkEndpointMetadataObject buildEndpoint endpoints
+    _buildRESTEndpoints collections endpoints = buildInfoMapM _ceName mkEndpointMetadataObject buildEndpoint endpoints
       where
         mkEndpointMetadataObject createEndpoint@EndpointMetadata {..} =
           let objectId = MOEndpoint _ceName
@@ -1427,14 +1429,14 @@ buildSchemaCacheRule logger env disableNativeQueryValidation = proc (MetadataWit
         buildEndpoint createEndpoint@EndpointMetadata {..} = do
           let -- QueryReference collName queryName = _edQuery endpoint
               addContext err = "in endpoint " <> toTxt _ceName <> ": " <> err
-          withRecordInconsistencyM (mkEndpointMetadataObject createEndpoint) $ modifyErr addContext $ resolveEndpoint collections createEndpoint
+          withRecordInconsistencyM (mkEndpointMetadataObject createEndpoint) $ modifyErr addContext $ _resolveEndpoint collections createEndpoint
 
-    resolveEndpoint ::
+    _resolveEndpoint ::
       (QErrM m) =>
       InsOrdHashMap CollectionName CreateCollection ->
       EndpointMetadata QueryReference ->
       m (EndpointMetadata GQLQueryWithText)
-    resolveEndpoint collections = traverse $ \(QueryReference collName queryName) -> do
+    _resolveEndpoint collections = traverse $ \(QueryReference collName queryName) -> do
       collection <-
         onNothing
           (InsOrdHashMap.lookup collName collections)
