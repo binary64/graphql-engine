@@ -1,6 +1,6 @@
 # Multi-stage build for Hasura GraphQL Engine (memory-optimized fork)
-# Stage 1: Build with GHC 9.10.2
-FROM haskell:9.10.2-slim AS builder
+# Stage 1: Build with GHC 9.10
+FROM haskell:9.10.3-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
@@ -16,8 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
-# Copy everything (Hasura has many sub-packages)
-COPY . .
+# Copy cabal config first for dependency caching
+COPY cabal.project cabal.project
+COPY cabal/dev-sh.project cabal/dev-sh.project
+COPY cabal/dev-sh.project.local cabal/dev-sh.project.local
+COPY server/graphql-engine.cabal server/graphql-engine.cabal
+COPY server/lib/ server/lib/
 
 # Create a production cabal.project.local
 RUN cat > cabal.project.local << 'CABALEOF'
@@ -28,7 +32,7 @@ executable-dynamic: False
 library-vanilla: True
 
 package *
-  ghc-options: -j2 +RTS -A128m -n4m -RTS
+  ghc-options: -j1 +RTS -A64m -n2m -M6500m -RTS
 
 package hedis
   library-vanilla: True
@@ -48,10 +52,13 @@ package graphql-engine
 flags: -optimize-hasura
 CABALEOF
 
-# Build: fetch deps then compile
-RUN cabal new-update \
-    && cabal new-build graphql-engine -j2 --only-dependencies \
-    && cabal new-build graphql-engine -j1 \
+# Copy everything else
+COPY . .
+
+# Build: fetch deps then compile (single-threaded to keep memory low)
+RUN cabal update \
+    && cabal build graphql-engine --only-dependencies -j2 \
+    && cabal build graphql-engine -j1 \
     && cp $(cabal list-bin graphql-engine) /build/graphql-engine-bin \
     && strip /build/graphql-engine-bin
 

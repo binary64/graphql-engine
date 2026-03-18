@@ -13,9 +13,23 @@ jobs:
   build:
     name: Build graphql-engine
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghcrunner /opt/hostedtoolcache
+          sudo docker rmi $(docker image ls -aq) 2>/dev/null || true
+          df -h /
+
+      - name: Add swap
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
