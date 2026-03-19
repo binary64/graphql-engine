@@ -31,8 +31,6 @@ import Witch qualified
 -- Postgres. This value indicates which "flavour" of Postgres a backend is.
 data PostgresKind
   = Vanilla
-  | Citus
-  | Cockroach
   deriving stock (Show, Eq, Ord, Generic)
   deriving anyclass (Hashable)
 
@@ -46,8 +44,6 @@ data BackendType
 -- | The name of the backend, as we expect it to appear in our metadata and API.
 instance Witch.From BackendType NonEmptyText where
   from (Postgres Vanilla) = [nonEmptyTextQQ|postgres|]
-  from (Postgres Citus) = [nonEmptyTextQQ|citus|]
-  from (Postgres Cockroach) = [nonEmptyTextQQ|cockroach|]
   from DataConnector = [nonEmptyTextQQ|dataconnector|]
 
 instance ToTxt BackendType where
@@ -70,8 +66,6 @@ instance ToJSON BackendType where
 -- not because DataConnector fundamentally is configured at runtime with 'DataConnectorName'.
 data BackendSourceKind (b :: BackendType) where
   PostgresVanillaKind :: BackendSourceKind ('Postgres 'Vanilla)
-  PostgresCitusKind :: BackendSourceKind ('Postgres 'Citus)
-  PostgresCockroachKind :: BackendSourceKind ('Postgres 'Cockroach)
   DataConnectorKind :: DataConnectorName -> BackendSourceKind 'DataConnector
 
 deriving instance Show (BackendSourceKind b)
@@ -82,8 +76,6 @@ deriving instance Ord (BackendSourceKind b)
 
 instance Witch.From (BackendSourceKind b) NonEmptyText where
   from k@PostgresVanillaKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
-  from k@PostgresCitusKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
-  from k@PostgresCockroachKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
   from (DataConnectorKind dataConnectorName) = Witch.into @NonEmptyText dataConnectorName
 
 instance ToTxt (BackendSourceKind b) where
@@ -99,12 +91,6 @@ instance ToJSON (BackendSourceKind b) where
 instance FromJSON (BackendSourceKind ('Postgres 'Vanilla)) where
   parseJSON = mkParseStaticBackendSourceKind PostgresVanillaKind
 
-instance FromJSON (BackendSourceKind ('Postgres 'Citus)) where
-  parseJSON = mkParseStaticBackendSourceKind PostgresCitusKind
-
-instance FromJSON (BackendSourceKind ('Postgres 'Cockroach)) where
-  parseJSON = mkParseStaticBackendSourceKind PostgresCockroachKind
-
 instance FromJSON (BackendSourceKind ('DataConnector)) where
   parseJSON v = DataConnectorKind <$> parseJSON v
 
@@ -119,12 +105,6 @@ mkParseStaticBackendSourceKind backendSourceKind =
 
 instance HasCodec (BackendSourceKind ('Postgres 'Vanilla)) where
   codec = mkCodecStaticBackendSourceKind PostgresVanillaKind
-
-instance HasCodec (BackendSourceKind ('Postgres 'Citus)) where
-  codec = mkCodecStaticBackendSourceKind PostgresCitusKind
-
-instance HasCodec (BackendSourceKind ('Postgres 'Cockroach)) where
-  codec = mkCodecStaticBackendSourceKind PostgresCockroachKind
 
 instance HasCodec (BackendSourceKind ('DataConnector)) where
   codec = bimapCodec dec enc gqlNameCodec
@@ -171,8 +151,6 @@ backendShortName = \case
 supportedBackends :: [BackendType]
 supportedBackends =
   [ Postgres Vanilla,
-    Postgres Citus,
-    Postgres Cockroach,
     DataConnector
   ]
 
@@ -202,6 +180,4 @@ parseBackendTypeFromText txt =
 backendTypeFromBackendSourceKind :: BackendSourceKind b -> BackendType
 backendTypeFromBackendSourceKind = \case
   PostgresVanillaKind -> Postgres Vanilla
-  PostgresCitusKind -> Postgres Citus
-  PostgresCockroachKind -> Postgres Cockroach
   DataConnectorKind _ -> DataConnector

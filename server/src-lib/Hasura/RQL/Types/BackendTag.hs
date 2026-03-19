@@ -15,8 +15,6 @@ import "some" Data.GADT.Compare
 -- | A singleton-like GADT that associates a tag to each backend.
 data BackendTag (b :: BackendType) where
   PostgresVanillaTag :: BackendTag ('Postgres 'Vanilla)
-  PostgresCitusTag :: BackendTag ('Postgres 'Citus)
-  PostgresCockroachTag :: BackendTag ('Postgres 'Cockroach)
   DataConnectorTag :: BackendTag 'DataConnector
 
 -- Derive GEq and GCompare instances for BackendTag.
@@ -35,12 +33,6 @@ instance GCompare BackendTag where
   gcompare PostgresVanillaTag PostgresVanillaTag = GEQ
   gcompare PostgresVanillaTag _ = GLT
   gcompare _ PostgresVanillaTag = GGT
-  gcompare PostgresCitusTag PostgresCitusTag = GEQ
-  gcompare PostgresCitusTag _ = GLT
-  gcompare _ PostgresCitusTag = GGT
-  gcompare PostgresCockroachTag PostgresCockroachTag = GEQ
-  gcompare PostgresCockroachTag _ = GLT
-  gcompare _ PostgresCockroachTag = GGT
   gcompare DataConnectorTag DataConnectorTag = GEQ
 
 -- | This class describes how to get a tag for a given type.
@@ -51,20 +43,12 @@ class HasTag (b :: BackendType) where
 instance HasTag ('Postgres 'Vanilla) where
   backendTag = PostgresVanillaTag
 
-instance HasTag ('Postgres 'Citus) where
-  backendTag = PostgresCitusTag
-
-instance HasTag ('Postgres 'Cockroach) where
-  backendTag = PostgresCockroachTag
-
 instance HasTag 'DataConnector where
   backendTag = DataConnectorTag
 
 -- | How to convert back from a tag to a runtime value.
 reify :: BackendTag b -> BackendType
 reify PostgresVanillaTag = Postgres Vanilla
-reify PostgresCitusTag = Postgres Citus
-reify PostgresCockroachTag = Postgres Cockroach
 reify DataConnectorTag = DataConnector
 
 -- | Provides a title-cased name for a database kind, inferring the appropriate

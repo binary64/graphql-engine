@@ -17,15 +17,12 @@ import Data.Kind (Type)
 import Data.Text.Extended (toTxt)
 import Data.Typeable
 import Hasura.Backends.Postgres.Connection qualified as Postgres
-import Hasura.Backends.Postgres.Connection.VersionCheck (runCockroachVersionCheck)
 import Hasura.Backends.Postgres.Execute.ConnectionTemplate qualified as Postgres
-import Hasura.Backends.Postgres.Instances.PingSource (runCockroachDBPing)
 import Hasura.Backends.Postgres.SQL.DML qualified as Postgres
 import Hasura.Backends.Postgres.SQL.Types qualified as Postgres
 import Hasura.Backends.Postgres.SQL.Value qualified as Postgres
 import Hasura.Backends.Postgres.Types.Aggregates qualified as Postgres
 import Hasura.Backends.Postgres.Types.BoolExp qualified as Postgres
-import Hasura.Backends.Postgres.Types.CitusExtraTableMetadata qualified as Citus
 import Hasura.Backends.Postgres.Types.ComputedField qualified as Postgres
 import Hasura.Backends.Postgres.Types.Function qualified as Postgres
 import Hasura.Backends.Postgres.Types.Insert qualified as Postgres (BackendInsert)
@@ -71,14 +68,6 @@ class
 
 instance PostgresBackend 'Vanilla where
   type PgExtraTableMetadata 'Vanilla = Postgres.PGExtraTableMetadata
-
-instance PostgresBackend 'Citus where
-  type PgExtraTableMetadata 'Citus = Citus.ExtraTableMetadata
-
-instance PostgresBackend 'Cockroach where
-  type PgExtraTableMetadata 'Cockroach = Postgres.PGExtraTableMetadata
-  versionCheckImpl = runCockroachVersionCheck
-  runPingSourceImpl = runCockroachDBPing
 
 ----------------------------------------------------------------
 -- Backend instance
@@ -195,5 +184,3 @@ instance
   sourceConfigBackendSourceKind _sourceConfig =
     case backendTag @('Postgres pgKind) of
       PostgresVanillaTag -> PostgresVanillaKind
-      PostgresCitusTag -> PostgresCitusKind
-      PostgresCockroachTag -> PostgresCockroachKind

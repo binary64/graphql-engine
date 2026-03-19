@@ -59,7 +59,7 @@ import Hasura.Prelude
 import Hasura.RQL.IR.BoolExp.RemoteRelationshipPredicate
 import Hasura.RQL.Types.Common (SourceName)
 import Hasura.RQL.Types.ResizePool
-import Hasura.SQL.Types (ExtensionsSchema, toSQL)
+import Hasura.SQL.Types (ExtensionsSchema, toSQL, toSQLTxt)
 import Kriti.Error qualified as Kriti
 import Kriti.Parser qualified as Kriti
 import Network.HTTP.Types qualified as HTTP
@@ -408,8 +408,8 @@ mkGetPGColValuesQuery sessionVariables table (_colType, col) fieldName boolExps 
   pure
     $ PG.withQE
       defaultTxErrorHandler
-      ( PG.fromBuilder
-          ( toSQL
+      ( PG.fromText
+          ( toSQLTxt
               ( S.mkSelect
                   { S.selExtr = [S.Extractor (S.SETyAnn (S.SEIdentifier (Identifier columnName)) (S.textTypeAnn)) Nothing],
                     S.selFrom = Just $ S.mkSimpleFromExp table,

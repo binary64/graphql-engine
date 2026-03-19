@@ -57,8 +57,6 @@ data RQLQuery
   | RQDelete !DeleteQuery
   | RQCount !CountQuery
   | RQRunSql !Postgres.RunSQL
-  | RQCitusRunSql !Postgres.RunSQL
-  | RQCockroachRunSql !Postgres.RunSQL
   | RQDataConnectorRunSql !DataConnectorName !DataConnector.DataConnectorRunSQL
   | RQBulk ![RQLQuery]
   | -- | A variant of 'RQBulk' that runs a bulk of read-only queries concurrently.
@@ -85,8 +83,6 @@ instance FromJSON RQLQuery where
       -- string interpolation easier in the cross-backend tests.
       "run_sql" -> RQRunSql <$> args
       "pg_run_sql" -> RQRunSql <$> args
-      "citus_run_sql" -> RQCitusRunSql <$> args
-      "cockroach_run_sql" -> RQCockroachRunSql <$> args
       (dcNameFromRunSql -> Just t') -> RQDataConnectorRunSql t' <$> args
       "bulk" -> RQBulk <$> args
       "concurrent_bulk" -> RQConcurrentBulk <$> args
@@ -152,8 +148,6 @@ queryModifiesSchema = \case
   RQDelete _ -> False
   RQCount _ -> False
   RQRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
-  RQCitusRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
-  RQCockroachRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
   RQDataConnectorRunSql _ _ -> False
   RQBulk l -> any queryModifiesSchema l
   RQConcurrentBulk l -> any queryModifiesSchema l
@@ -178,8 +172,6 @@ runQueryM sqlGen rq = Tracing.newSpan (T.pack $ constrName rq) Tracing.SKInterna
   RQDelete q -> runDelete sqlGen q
   RQCount q -> runCount q
   RQRunSql q -> Postgres.runRunSQL @'Vanilla sqlGen q
-  RQCitusRunSql q -> Postgres.runRunSQL @'Citus sqlGen q
-  RQCockroachRunSql q -> Postgres.runRunSQL @'Cockroach sqlGen q
   RQDataConnectorRunSql t q -> DataConnector.runSQL t q
   RQBulk l -> encJFromList <$> indexedMapM (runQueryM sqlGen) l
   RQConcurrentBulk l -> do
@@ -195,8 +187,6 @@ queryModifiesUserDB = \case
   RQDelete _ -> True
   RQCount _ -> False
   RQRunSql runsql -> not (Postgres.isReadOnly runsql)
-  RQCitusRunSql runsql -> not (Postgres.isReadOnly runsql)
-  RQCockroachRunSql runsql -> not (Postgres.isReadOnly runsql)
   RQDataConnectorRunSql _ _ -> True
   RQBulk q -> any queryModifiesUserDB q
   RQConcurrentBulk _ -> False

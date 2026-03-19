@@ -141,16 +141,12 @@ import Language.GraphQL.Draft.Syntax qualified as GQL
 -- @HashMap SourceName (AnyBackend SourceInfo)@.
 data AnyBackend (i :: BackendType -> Type)
   = PostgresVanillaValue (i ('Postgres 'Vanilla))
-  | PostgresCitusValue (i ('Postgres 'Citus))
-  | PostgresCockroachValue (i ('Postgres 'Cockroach))
   | DataConnectorValue (i 'DataConnector)
   deriving (Generic)
 
 -- | Generates a constraint for all backends.
 type AllBackendsSatisfy (c :: BackendType -> Constraint) =
   ( c ('Postgres 'Vanilla),
-    c ('Postgres 'Citus),
-    c ('Postgres 'Cockroach),
     c 'DataConnector
   )
 
@@ -159,8 +155,6 @@ type SatisfiesForAllBackends
   (i :: BackendType -> Type)
   (c :: Type -> Constraint) =
   ( c (i ('Postgres 'Vanilla)),
-    c (i ('Postgres 'Citus)),
-    c (i ('Postgres 'Cockroach)),
     c (i 'DataConnector)
   )
 
@@ -171,15 +165,11 @@ type SatisfiesForAllBackends
 -- | How to obtain a tag from a runtime value.
 liftTag :: BackendType -> AnyBackend BackendTag
 liftTag (Postgres Vanilla) = PostgresVanillaValue PostgresVanillaTag
-liftTag (Postgres Citus) = PostgresCitusValue PostgresCitusTag
-liftTag (Postgres Cockroach) = PostgresCockroachValue PostgresCockroachTag
 liftTag DataConnector = DataConnectorValue DataConnectorTag
 
 -- | Obtain a @BackendType@ from a runtime value.
 lowerTag :: AnyBackend i -> BackendType
 lowerTag (PostgresVanillaValue _) = Postgres Vanilla
-lowerTag (PostgresCitusValue _) = Postgres Citus
-lowerTag (PostgresCockroachValue _) = Postgres Cockroach
 lowerTag (DataConnectorValue _) = DataConnector
 
 -- | Transforms an @AnyBackend i@ into an @AnyBackend j@.
@@ -192,8 +182,6 @@ mapBackend ::
   AnyBackend j
 mapBackend e f = case e of
   PostgresVanillaValue x -> PostgresVanillaValue (f x)
-  PostgresCitusValue x -> PostgresCitusValue (f x)
-  PostgresCockroachValue x -> PostgresCockroachValue (f x)
   DataConnectorValue x -> DataConnectorValue (f x)
 
 -- | Traverse an @AnyBackend i@ into an @f (AnyBackend j)@.
@@ -209,8 +197,6 @@ traverseBackend ::
   f (AnyBackend j)
 traverseBackend e f = case e of
   PostgresVanillaValue x -> PostgresVanillaValue <$> f x
-  PostgresCitusValue x -> PostgresCitusValue <$> f x
-  PostgresCockroachValue x -> PostgresCockroachValue <$> f x
   DataConnectorValue x -> DataConnectorValue <$> f x
 
 -- | Creates a new @AnyBackend i@ for a given backend @b@ by wrapping the given @i b@.
@@ -223,8 +209,6 @@ mkAnyBackend ::
   AnyBackend i
 mkAnyBackend x = case backendTag @b of
   PostgresVanillaTag -> PostgresVanillaValue x
-  PostgresCitusTag -> PostgresCitusValue x
-  PostgresCockroachTag -> PostgresCockroachValue x
   DataConnectorTag -> DataConnectorValue x
 
 -- | Dispatch a function to the value inside the @AnyBackend@, that does not
@@ -238,8 +222,6 @@ runBackend ::
   r
 runBackend b f = case b of
   PostgresVanillaValue x -> f x
-  PostgresCitusValue x -> f x
-  PostgresCockroachValue x -> f x
   DataConnectorValue x -> f x
 
 -- | Dispatch an existential using an universally quantified function while
@@ -257,8 +239,6 @@ dispatchAnyBackend ::
   r
 dispatchAnyBackend e f = case e of
   PostgresVanillaValue x -> f x
-  PostgresCitusValue x -> f x
-  PostgresCockroachValue x -> f x
   DataConnectorValue x -> f x
 
 dispatchAnyBackendWithTwoConstraints ::
@@ -274,8 +254,6 @@ dispatchAnyBackendWithTwoConstraints ::
   r
 dispatchAnyBackendWithTwoConstraints e f = case e of
   PostgresVanillaValue x -> f x
-  PostgresCitusValue x -> f x
-  PostgresCockroachValue x -> f x
   DataConnectorValue x -> f x
 
 -- | Unlike 'dispatchAnyBackend', the expected constraint has a different kind.
@@ -291,8 +269,6 @@ dispatchAnyBackend' ::
   r
 dispatchAnyBackend' e f = case e of
   PostgresVanillaValue x -> f x
-  PostgresCitusValue x -> f x
-  PostgresCockroachValue x -> f x
   DataConnectorValue x -> f x
 
 -- | This allows you to apply a constraint to the Backend instances (c2)
@@ -310,8 +286,6 @@ dispatchAnyBackend'' ::
   r
 dispatchAnyBackend'' e f = case e of
   PostgresVanillaValue x -> f x
-  PostgresCitusValue x -> f x
-  PostgresCockroachValue x -> f x
   DataConnectorValue x -> f x
 
 -- | Sometimes we need to run operations on two backends of the same type.
@@ -330,8 +304,6 @@ composeAnyBackend ::
   r
 composeAnyBackend f e1 e2 owise = case (e1, e2) of
   (PostgresVanillaValue x, PostgresVanillaValue y) -> f x y
-  (PostgresCitusValue x, PostgresCitusValue y) -> f x y
-  (PostgresCockroachValue x, PostgresCockroachValue y) -> f x y
   (DataConnectorValue x, DataConnectorValue y) -> f x y
   (value1, value2) ->
     if mapBackend value1 (Const . const ()) == mapBackend value2 (Const . const ())
@@ -351,8 +323,6 @@ mergeAnyBackend ::
   AnyBackend i
 mergeAnyBackend f e1 e2 owise = case (e1, e2) of
   (PostgresVanillaValue x, PostgresVanillaValue y) -> PostgresVanillaValue (f x y)
-  (PostgresCitusValue x, PostgresCitusValue y) -> PostgresCitusValue (f x y)
-  (PostgresCockroachValue x, PostgresCockroachValue y) -> PostgresCockroachValue (f x y)
   (DataConnectorValue x, DataConnectorValue y) -> DataConnectorValue (f x y)
   (value1, value2) ->
     if mapBackend value1 (Const . const ()) == mapBackend value2 (Const . const ())
@@ -370,8 +340,6 @@ unpackAnyBackend ::
   Maybe (i b)
 unpackAnyBackend exists = case (backendTag @b, exists) of
   (PostgresVanillaTag, PostgresVanillaValue x) -> Just x
-  (PostgresCitusTag, PostgresCitusValue x) -> Just x
-  (PostgresCockroachTag, PostgresCockroachValue x) -> Just x
   (DataConnectorTag, DataConnectorValue x) -> Just x
   (tag, value) ->
     if mapBackend (mkAnyBackend tag) (Const . const ()) == mapBackend value (Const . const ())
@@ -405,10 +373,6 @@ dispatchAnyBackendArrow arrow = proc (ab, x) -> do
   case ab of
     PostgresVanillaValue val ->
       arrow @('Postgres 'Vanilla) -< (val, x)
-    PostgresCitusValue val ->
-      arrow @('Postgres 'Citus) -< (val, x)
-    PostgresCockroachValue val ->
-      arrow @('Postgres 'Cockroach) -< (val, x)
     DataConnectorValue val ->
       arrow @'DataConnector -< (val, x)
 
@@ -425,8 +389,6 @@ parseAnyBackendFromJSON ::
   Parser (AnyBackend i)
 parseAnyBackendFromJSON backendKind value = case backendKind of
   Postgres Vanilla -> PostgresVanillaValue <$> parseJSON value
-  Postgres Citus -> PostgresCitusValue <$> parseJSON value
-  Postgres Cockroach -> PostgresCockroachValue <$> parseJSON value
   DataConnector -> DataConnectorValue <$> parseJSON value
 
 -- | Codec that can be used to decode and encode @AnyBackend i@ values. Throws
@@ -439,8 +401,6 @@ anyBackendCodec ::
   JSONCodec (AnyBackend i)
 anyBackendCodec backendKind = case backendKind of
   Postgres Vanilla -> dimapCodec PostgresVanillaValue (\case (PostgresVanillaValue v) -> v; _ -> error msg) $ codec @(i ('Postgres 'Vanilla))
-  Postgres Citus -> dimapCodec PostgresCitusValue (\case (PostgresCitusValue v) -> v; _ -> error msg) $ codec @(i ('Postgres 'Citus))
-  Postgres Cockroach -> dimapCodec PostgresCockroachValue (\case (PostgresCockroachValue v) -> v; _ -> error msg) $ codec @(i ('Postgres 'Cockroach))
   DataConnector -> dimapCodec DataConnectorValue (\case (DataConnectorValue v) -> v; _ -> error msg) $ codec @(i 'DataConnector)
   where
     msg = "got unexpected backend type indicating anyBackendCodec was called with the wrong backendType value"
@@ -474,8 +434,6 @@ instance (i `SatisfiesForAllBackends` FromJSON) => FromJSONKeyValue (AnyBackend 
 backendSourceKindFromText :: Text -> Maybe (AnyBackend BackendSourceKind)
 backendSourceKindFromText text =
   PostgresVanillaValue <$> staticKindFromText PostgresVanillaKind
-    <|> PostgresCitusValue <$> staticKindFromText PostgresCitusKind
-    <|> PostgresCockroachValue <$> staticKindFromText PostgresCockroachKind
     -- IMPORTANT: This must be the last thing here, since it will accept (almost) any string
     <|> DataConnectorValue . DataConnectorKind <$> (preview _Right . mkDataConnectorName =<< GQL.mkName text)
   where
@@ -488,7 +446,5 @@ backendSourceKindFromText text =
 parseBackendSourceKindFromJSON :: Value -> Parser (AnyBackend BackendSourceKind)
 parseBackendSourceKindFromJSON value =
   PostgresVanillaValue <$> parseJSON @(BackendSourceKind ('Postgres 'Vanilla)) value
-    <|> PostgresCitusValue <$> parseJSON @(BackendSourceKind ('Postgres 'Citus)) value
-    <|> PostgresCockroachValue <$> parseJSON @(BackendSourceKind ('Postgres 'Cockroach)) value
     -- IMPORTANT: This must the last thing here, since it will accept (almost) any string
     <|> DataConnectorValue <$> parseJSON @(BackendSourceKind ('DataConnector)) value

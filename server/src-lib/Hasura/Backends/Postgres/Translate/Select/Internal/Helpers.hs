@@ -29,7 +29,7 @@ import Control.Monad.Writer (Writer, runWriter)
 import Data.Bifunctor (bimap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Text.Extended (toTxt)
-import Database.PG.Query (Query, fromBuilder)
+import Database.PG.Query (Query, fromText)
 import Hasura.Backends.Postgres.SQL.DML qualified as S
 import Hasura.Backends.Postgres.SQL.RenameIdentifiers
 import Hasura.Backends.Postgres.SQL.Types
@@ -46,7 +46,7 @@ import Hasura.Function.Cache
 import Hasura.NativeQuery.Metadata (NativeQueryName (..))
 import Hasura.Prelude
 import Hasura.RQL.Types.Common (FieldName)
-import Hasura.SQL.Types (ToSQL (toSQL))
+import Hasura.SQL.Types (ToSQL (toSQL), toSQLTxt)
 
 -- | First element extractor expression from given record set
 -- For example:- To get first "id" column from given row set,
@@ -158,7 +158,7 @@ customSQLToInnerCTEs =
   fmap (bimap S.toTableAlias S.ICTEUnsafeRawSQL) . HashMap.toList . getCustomSQLCTEs
 
 toQuery :: S.SelectWithG S.TopLevelCTE -> Query
-toQuery = fromBuilder . toSQL . renameIdentifiersSelectWithTopLevelCTE
+toQuery = fromText . toSQLTxt . renameIdentifiersSelectWithTopLevelCTE
 
 selectToSelectWithM :: (MonadIO m) => WriterT CustomSQLCTEs m S.Select -> m S.SelectWith
 selectToSelectWithM action = do

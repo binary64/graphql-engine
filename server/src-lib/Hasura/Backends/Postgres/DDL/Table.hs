@@ -146,8 +146,8 @@ fetchEnumValuesFromDb tableName primaryKeyColumn maybeCommentColumn = do
   let nullExtr = Extractor SENull Nothing
       commentExtr = maybe nullExtr (mkExtr . rciName) maybeCommentColumn
       query =
-        PG.fromBuilder
-          $ toSQL
+        PG.fromText
+          $ toSQLTxt
             mkSelect
               { selFrom = Just $ mkSimpleFromExp tableName,
                 selExtr = [mkExtr (rciName primaryKeyColumn), commentExtr]

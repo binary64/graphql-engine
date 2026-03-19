@@ -34,36 +34,3 @@ instance BackendAPI ('Postgres 'Vanilla) where
         connectionTemplateCommands @('Postgres 'Vanilla)
       ]
 
-instance BackendAPI ('Postgres 'Citus) where
-  metadataV1CommandParsers =
-    concat
-      [ sourceCommands @('Postgres 'Citus),
-        tableCommands @('Postgres 'Citus),
-        tablePermissionsCommands @('Postgres 'Citus),
-        functionCommands @('Postgres 'Citus),
-        functionPermissionsCommands @('Postgres 'Citus),
-        relationshipCommands @('Postgres 'Citus),
-        remoteRelationshipCommands @('Postgres 'Citus),
-        connectionTemplateCommands @('Postgres 'Citus),
-        nativeQueriesCommands @('Postgres 'Citus),
-        logicalModelsCommands @('Postgres 'Citus)
-      ]
-
-instance BackendAPI ('Postgres 'Cockroach) where
-  metadataV1CommandParsers =
-    concat
-      [ sourceCommands @('Postgres 'Cockroach),
-        tableCommands @('Postgres 'Cockroach),
-        tablePermissionsCommands @('Postgres 'Cockroach),
-        relationshipCommands @('Postgres 'Cockroach),
-        remoteRelationshipCommands @('Postgres 'Cockroach),
-        [ commandParser
-            "set_table_is_enum"
-            ( RMPgSetTableIsEnum
-                . mkAnyBackend @('Postgres 'Cockroach)
-            )
-        ],
-        connectionTemplateCommands @('Postgres 'Cockroach),
-        nativeQueriesCommands @('Postgres 'Cockroach),
-        logicalModelsCommands @('Postgres 'Cockroach)
-      ]

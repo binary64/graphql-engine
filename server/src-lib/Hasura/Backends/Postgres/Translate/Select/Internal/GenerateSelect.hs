@@ -13,7 +13,6 @@ where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashMap.Strict.InsOrd qualified as InsOrdHashMap
-import Data.HashSet qualified as HashSet
 import Data.List.NonEmpty qualified as NE
 import Hasura.Backends.Postgres.SQL.DML qualified as S
 import Hasura.Backends.Postgres.SQL.Types
@@ -44,12 +43,6 @@ class PostgresGenerateSQLSelect (pgKind :: PostgresKind) where
 instance PostgresGenerateSQLSelect 'Vanilla where
   generateSQLSelect = defaultGenerateSQLSelect @('Vanilla) id
 
-instance PostgresGenerateSQLSelect 'Citus where
-  generateSQLSelect = defaultGenerateSQLSelect @('Citus) id
-
-instance PostgresGenerateSQLSelect 'Cockroach where
-  generateSQLSelect = defaultGenerateSQLSelect @('Cockroach) applyCockroachDistinctOnWorkaround
-
 -- | Convert LimitArg to LimitExp, handling WITH TIES for PostgreSQL variants that support it
 limitArgToLimitExp :: BackendType -> LimitArg -> S.LimitExp
 limitArgToLimitExp backendType (LimitArg withTies limit) =
@@ -60,116 +53,7 @@ limitArgToLimitExp backendType (LimitArg withTies limit) =
     else S.LimitExp (S.intToSQLExp limit)
   where
     supportsWithTies (Postgres Vanilla) = True
-    supportsWithTies (Postgres Citus) = True
-    -- note: only Postgres Cockroach is reachable here at time of writeing:
     supportsWithTies _ = False
-
--- This function rewrites a select statement that uses DISTINCT ON where
--- the DISTINCT ON references CASE ... END expressions to a nested select
--- to work around a Cockroach deficiency where the query fails if these are present.
--- The issue has been reported to Cockroach here: https://github.com/cockroachdb/cockroach/issues/107516
---
--- We are rewriting SQL of the form
--- ```
--- SELECT DISTINCT ON (<exprA>, <exprB>, ...) <extractors>
--- FROM table
--- ORDER BY <exprA>, <exprB>, ...
--- OFFSET <offset>
--- LIMIT <limit>
--- ```
--- into
--- ```
--- SELECT DISTINCT ON ("_hasura_cr_do_wa_1", "_hasura_cr_do_wa_2", ...) *
--- FROM (
---   SELECT
---     <exprA> AS "_hasura_cr_do_wa_1",
---     <exprB> AS "_hasura_cr_do_wa_2",
---     <extractors>
---   FROM table
--- ) AS "_hasura_cockroach_distinct_on_workaround"
--- ORDER BY "_hasura_cr_do_wa_1", "_hasura_cr_do_wa_2", ...
--- OFFSET <offset>
--- LIMIT <limit>
--- ```
-applyCockroachDistinctOnWorkaround :: S.Select -> S.Select
-applyCockroachDistinctOnWorkaround select =
-  case S.selDistinct select of
-    Just (S.DistinctOn distinctExps)
-      | any (\expr -> isCondExp expr || isReferencingExtractorCondExp expr) distinctExps ->
-          let orderByExps = maybe [] getOrderByExps $ S.selOrderBy select
-              -- Create extractors for all expressions used in order by and distinct
-              -- that are not direct references to existing extractors in the select
-              replacementExtractors =
-                HashSet.fromList (distinctExps <> orderByExps)
-                  & HashSet.toList
-                  & zip [1 ..]
-                  & mapMaybe
-                    ( \((index :: Int), expr) ->
-                        if isReferencingExtractor expr
-                          then -- If the distinct or order by expression is already referencing an extractor, then we don't need to generate
-                          -- an extractor to hold the expression to use it in the wrapping select. It is already available as the existing
-                          -- extractor.
-                            Nothing
-                          else Just (expr, (S.mkColumnAlias $ "_hasura_cr_do_wa_" <> tshow index))
-                    )
-              innerSelect =
-                S.mkSelFromItem
-                  select
-                    { S.selExtr = ((\(expr, alias) -> S.Extractor expr (Just alias)) <$> replacementExtractors) <> S.selExtr select,
-                      S.selOrderBy = Nothing,
-                      S.selDistinct = Nothing,
-                      S.selLimit = Nothing,
-                      S.selOffset = Nothing
-                    }
-                  (S.mkTableAlias "_hasura_cockroach_distinct_on_workaround")
-              rewrittenOrderBy =
-                S.selOrderBy select
-                  <&> \(S.OrderByExp items) -> S.OrderByExp $ replaceOrderByItem replacementExtractors <$> items
-           in S.mkSelect
-                { S.selExtr = [S.Extractor (S.SEStar Nothing) Nothing],
-                  S.selFrom = Just $ S.FromExp [innerSelect],
-                  S.selOrderBy = rewrittenOrderBy,
-                  S.selDistinct = Just (S.DistinctOn $ replaceExp replacementExtractors <$> distinctExps),
-                  S.selLimit = S.selLimit select,
-                  S.selOffset = S.selOffset select
-                }
-    _ -> select
-  where
-    -- Is the expression a CASE ... END expression?
-    isCondExp :: S.SQLExp -> Bool
-    isCondExp = \case S.SECond {} -> True; _ -> False
-
-    -- Is the expression referencing an Extractor from the Select that is a CASE ... END expression?
-    isReferencingExtractorCondExp :: S.SQLExp -> Bool
-    isReferencingExtractorCondExp = \case
-      S.SEIdentifier identifier -> HashSet.member identifier condExtractorIdentifiers
-      _ -> False
-
-    -- Is the expression referencing an Extractor from the Select?
-    isReferencingExtractor :: S.SQLExp -> Bool
-    isReferencingExtractor = \case
-      S.SEIdentifier identifier -> HashSet.member identifier extractorIdentifiers
-      _ -> False
-
-    condExtractorIdentifiers :: HashSet S.Identifier
-    condExtractorIdentifiers =
-      HashSet.fromList $ flip mapMaybe (S.selExtr select) $ \case
-        (S.Extractor (S.SECond {}) alias) -> S.toIdentifier <$> alias
-        _ -> Nothing
-
-    extractorIdentifiers :: HashSet S.Identifier
-    extractorIdentifiers = HashSet.fromList $ mapMaybe (\(S.Extractor _ alias) -> S.toIdentifier <$> alias) (S.selExtr select)
-
-    getOrderByExps :: S.OrderByExp -> [S.SQLExp]
-    getOrderByExps (S.OrderByExp items) = toList $ S.oExpression <$> items
-
-    replaceExp :: [(S.SQLExp, S.ColumnAlias)] -> S.SQLExp -> S.SQLExp
-    replaceExp replacementExtractors expr =
-      maybe expr S.mkSIdenExp $ lookup expr replacementExtractors
-
-    replaceOrderByItem :: [(S.SQLExp, S.ColumnAlias)] -> S.OrderByItem -> S.OrderByItem
-    replaceOrderByItem replacementExtractors orderByItem =
-      orderByItem {S.oExpression = replaceExp replacementExtractors (S.oExpression orderByItem)}
 
 defaultGenerateSQLSelect ::
   forall pgKind.

@@ -17,19 +17,6 @@ class PostgresAnnotatedFieldJSON (pgKind :: PostgresKind) where
 instance PostgresAnnotatedFieldJSON 'Vanilla where
   annRowToJson = pgAnnRowToJson
 
-instance PostgresAnnotatedFieldJSON 'Citus where
-  annRowToJson fieldAlias fieldExps =
-    -- Due to the restrictions Citus imposes on joins between tables of various
-    -- distribution types we cannot use row_to_json and have to only rely on
-    -- json_build_object.
-    withJsonBuildObj fieldAlias $ concatMap toJsonBuildObjectExps fieldExps
-    where
-      toJsonBuildObjectExps (fieldName, fieldExp) =
-        [S.SELit $ getFieldNameTxt fieldName, fieldExp]
-
-instance PostgresAnnotatedFieldJSON 'Cockroach where
-  annRowToJson = pgAnnRowToJson
-
 pgAnnRowToJson :: FieldName -> [(FieldName, S.SQLExp)] -> (S.ColumnAlias, S.SQLExp)
 pgAnnRowToJson fieldAlias fieldExps =
   -- postgres ignores anything beyond 63 chars for an iden
