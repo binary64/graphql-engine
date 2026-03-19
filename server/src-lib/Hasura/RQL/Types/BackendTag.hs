@@ -19,7 +19,6 @@ data BackendTag (b :: BackendType) where
   PostgresCockroachTag :: BackendTag ('Postgres 'Cockroach)
   MSSQLTag :: BackendTag 'MSSQL
   BigQueryTag :: BackendTag 'BigQuery
-  DataConnectorTag :: BackendTag 'DataConnector
 
 -- Derive GEq and GCompare instances for BackendTag.
 -- These are used to write a Select instance for BackendMap.
@@ -47,9 +46,6 @@ instance GCompare BackendTag where
   gcompare MSSQLTag _ = GLT
   gcompare _ MSSQLTag = GGT
   gcompare BigQueryTag BigQueryTag = GEQ
-  gcompare BigQueryTag _ = GLT
-  gcompare _ BigQueryTag = GGT
-  gcompare DataConnectorTag DataConnectorTag = GEQ
 
 -- | This class describes how to get a tag for a given type.
 -- We use it in AnyBackend: `case backendTag @b of`...
@@ -71,9 +67,6 @@ instance HasTag 'MSSQL where
 instance HasTag 'BigQuery where
   backendTag = BigQueryTag
 
-instance HasTag 'DataConnector where
-  backendTag = DataConnectorTag
-
 -- | How to convert back from a tag to a runtime value.
 reify :: BackendTag b -> BackendType
 reify PostgresVanillaTag = Postgres Vanilla
@@ -81,7 +74,6 @@ reify PostgresCitusTag = Postgres Citus
 reify PostgresCockroachTag = Postgres Cockroach
 reify MSSQLTag = MSSQL
 reify BigQueryTag = BigQuery
-reify DataConnectorTag = DataConnector
 
 -- | Provides a title-cased name for a database kind, inferring the appropriate
 -- database kind from type context.

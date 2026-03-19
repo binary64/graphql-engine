@@ -16,15 +16,13 @@ module Hasura.RQL.Types.BackendType
   )
 where
 
-import Autodocodec (Codec (StringCodec), HasCodec (codec), JSONCodec, bimapCodec, literalTextCodec, parseAlternatives, (<?>))
-import Data.Aeson hiding ((<?>))
+import Autodocodec (HasCodec (codec), JSONCodec, bimapCodec, literalTextCodec, parseAlternatives)
+import Data.Aeson
 import Data.Aeson.Types (Parser)
 import Data.Text (unpack)
 import Data.Text.Extended
 import Data.Text.NonEmpty (NonEmptyText, nonEmptyTextQQ)
 import Hasura.Prelude
-import Hasura.RQL.Types.DataConnector (DataConnectorName (..), mkDataConnectorName)
-import Language.GraphQL.Draft.Syntax qualified as GQL
 import Witch qualified
 
 -- | Argument to Postgres; we represent backends which are variations on Postgres as sub-types of
@@ -41,7 +39,6 @@ data BackendType
   = Postgres PostgresKind
   | MSSQL
   | BigQuery
-  | DataConnector
   deriving stock (Show, Eq, Ord, Generic)
   deriving anyclass (Hashable)
 
@@ -52,7 +49,6 @@ instance Witch.From BackendType NonEmptyText where
   from (Postgres Cockroach) = [nonEmptyTextQQ|cockroach|]
   from MSSQL = [nonEmptyTextQQ|mssql|]
   from BigQuery = [nonEmptyTextQQ|bigquery|]
-  from DataConnector = [nonEmptyTextQQ|dataconnector|]
 
 instance ToTxt BackendType where
   toTxt = toTxt . Witch.into @NonEmptyText
@@ -63,22 +59,12 @@ instance FromJSON BackendType where
 instance ToJSON BackendType where
   toJSON = String . toTxt
 
--- | Similar to 'BackendType', however, in the case of 'DataConnectorKind' we need to be able
--- capture the name of the data connector that should be used by the DataConnector backend.
--- This type correlates to the kind property of 'SourceMetadata', which is usually just
--- postgres, mssql, etc for static backends, but can be a configurable value for DataConnector
--- hence requiring 'DataConnectorName' for 'DataConnectorKind'
---
--- This type cannot entirely replace 'BackendType' because 'BackendType' has a fixed number of
--- possible values which can be enumerated over at compile time, but 'BackendSourceKind' does
--- not because DataConnector fundamentally is configured at runtime with 'DataConnectorName'.
 data BackendSourceKind (b :: BackendType) where
   PostgresVanillaKind :: BackendSourceKind ('Postgres 'Vanilla)
   PostgresCitusKind :: BackendSourceKind ('Postgres 'Citus)
   PostgresCockroachKind :: BackendSourceKind ('Postgres 'Cockroach)
   MSSQLKind :: BackendSourceKind 'MSSQL
   BigQueryKind :: BackendSourceKind 'BigQuery
-  DataConnectorKind :: DataConnectorName -> BackendSourceKind 'DataConnector
 
 deriving instance Show (BackendSourceKind b)
 
@@ -94,7 +80,6 @@ instance Witch.From (BackendSourceKind b) NonEmptyText where
   from k@PostgresCockroachKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
   from k@MSSQLKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
   from k@BigQueryKind = Witch.into @NonEmptyText $ backendTypeFromBackendSourceKind k
-  from (DataConnectorKind dataConnectorName) = Witch.into @NonEmptyText dataConnectorName
 
 instance ToTxt (BackendSourceKind b) where
   toTxt = toTxt . Witch.into @NonEmptyText
@@ -121,9 +106,6 @@ instance FromJSON (BackendSourceKind ('MSSQL)) where
 instance FromJSON (BackendSourceKind ('BigQuery)) where
   parseJSON = mkParseStaticBackendSourceKind BigQueryKind
 
-instance FromJSON (BackendSourceKind ('DataConnector)) where
-  parseJSON v = DataConnectorKind <$> parseJSON v
-
 mkParseStaticBackendSourceKind :: BackendSourceKind b -> (Value -> Parser (BackendSourceKind b))
 mkParseStaticBackendSourceKind backendSourceKind =
   withText "BackendSourceKind" $ \text ->
@@ -147,25 +129,6 @@ instance HasCodec (BackendSourceKind ('MSSQL)) where
 
 instance HasCodec (BackendSourceKind ('BigQuery)) where
   codec = mkCodecStaticBackendSourceKind BigQueryKind
-
-instance HasCodec (BackendSourceKind ('DataConnector)) where
-  codec = bimapCodec dec enc gqlNameCodec
-    where
-      dec :: GQL.Name -> Either String (BackendSourceKind 'DataConnector)
-      dec n = DataConnectorKind <$> mkDataConnectorName n
-
-      enc :: BackendSourceKind ('DataConnector) -> GQL.Name
-      enc (DataConnectorKind dcName) = unDataConnectorName dcName
-
-      gqlNameCodec :: JSONCodec GQL.Name
-      gqlNameCodec =
-        bimapCodec
-          parseName
-          GQL.unName
-          (StringCodec (Just "GraphQLName"))
-          <?> "A valid GraphQL name"
-
-      parseName text = GQL.mkName text `onNothing` Left (unpack text <> " is not a valid GraphQL name")
 
 mkCodecStaticBackendSourceKind :: BackendSourceKind b -> JSONCodec (BackendSourceKind b)
 mkCodecStaticBackendSourceKind backendSourceKind =
@@ -196,8 +159,7 @@ supportedBackends =
     Postgres Citus,
     Postgres Cockroach,
     MSSQL,
-    BigQuery,
-    DataConnector
+    BigQuery
   ]
 
 backendTextNames :: BackendType -> [Text]
@@ -230,4 +192,3 @@ backendTypeFromBackendSourceKind = \case
   PostgresCockroachKind -> Postgres Cockroach
   MSSQLKind -> MSSQL
   BigQueryKind -> BigQuery
-  DataConnectorKind _ -> DataConnector

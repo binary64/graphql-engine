@@ -112,7 +112,6 @@ where
 import Autodocodec (HasCodec (codec), JSONCodec, dimapCodec)
 import Control.Applicative
 import Control.Arrow.Extended (ArrowChoice)
-import Control.Lens (preview, _Right)
 import Data.Aeson
 import Data.Aeson.Extended
 import Data.Aeson.Key qualified as Key
@@ -121,8 +120,6 @@ import Data.Kind (Constraint, Type)
 import Hasura.Prelude
 import Hasura.RQL.Types.BackendTag
 import Hasura.RQL.Types.BackendType
-import Hasura.RQL.Types.DataConnector (mkDataConnectorName)
-import Language.GraphQL.Draft.Syntax qualified as GQL
 
 --------------------------------------------------------------------------------
 
@@ -145,7 +142,6 @@ data AnyBackend (i :: BackendType -> Type)
   | PostgresCockroachValue (i ('Postgres 'Cockroach))
   | MSSQLValue (i 'MSSQL)
   | BigQueryValue (i 'BigQuery)
-  | DataConnectorValue (i 'DataConnector)
   deriving (Generic)
 
 -- | Generates a constraint for all backends.
@@ -154,8 +150,7 @@ type AllBackendsSatisfy (c :: BackendType -> Constraint) =
     c ('Postgres 'Citus),
     c ('Postgres 'Cockroach),
     c 'MSSQL,
-    c 'BigQuery,
-    c 'DataConnector
+    c 'BigQuery
   )
 
 -- | Generates a constraint for a generic type over all backends.
@@ -166,8 +161,7 @@ type SatisfiesForAllBackends
     c (i ('Postgres 'Citus)),
     c (i ('Postgres 'Cockroach)),
     c (i 'MSSQL),
-    c (i 'BigQuery),
-    c (i 'DataConnector)
+    c (i 'BigQuery)
   )
 
 --------------------------------------------------------------------------------
@@ -181,7 +175,6 @@ liftTag (Postgres Citus) = PostgresCitusValue PostgresCitusTag
 liftTag (Postgres Cockroach) = PostgresCockroachValue PostgresCockroachTag
 liftTag MSSQL = MSSQLValue MSSQLTag
 liftTag BigQuery = BigQueryValue BigQueryTag
-liftTag DataConnector = DataConnectorValue DataConnectorTag
 
 -- | Obtain a @BackendType@ from a runtime value.
 lowerTag :: AnyBackend i -> BackendType
@@ -190,7 +183,6 @@ lowerTag (PostgresCitusValue _) = Postgres Citus
 lowerTag (PostgresCockroachValue _) = Postgres Cockroach
 lowerTag (MSSQLValue _) = MSSQL
 lowerTag (BigQueryValue _) = BigQuery
-lowerTag (DataConnectorValue _) = DataConnector
 
 -- | Transforms an @AnyBackend i@ into an @AnyBackend j@.
 mapBackend ::
@@ -206,7 +198,6 @@ mapBackend e f = case e of
   PostgresCockroachValue x -> PostgresCockroachValue (f x)
   MSSQLValue x -> MSSQLValue (f x)
   BigQueryValue x -> BigQueryValue (f x)
-  DataConnectorValue x -> DataConnectorValue (f x)
 
 -- | Traverse an @AnyBackend i@ into an @f (AnyBackend j)@.
 traverseBackend ::
@@ -225,7 +216,6 @@ traverseBackend e f = case e of
   PostgresCockroachValue x -> PostgresCockroachValue <$> f x
   MSSQLValue x -> MSSQLValue <$> f x
   BigQueryValue x -> BigQueryValue <$> f x
-  DataConnectorValue x -> DataConnectorValue <$> f x
 
 -- | Creates a new @AnyBackend i@ for a given backend @b@ by wrapping the given @i b@.
 mkAnyBackend ::
@@ -241,7 +231,6 @@ mkAnyBackend x = case backendTag @b of
   PostgresCockroachTag -> PostgresCockroachValue x
   MSSQLTag -> MSSQLValue x
   BigQueryTag -> BigQueryValue x
-  DataConnectorTag -> DataConnectorValue x
 
 -- | Dispatch a function to the value inside the @AnyBackend@, that does not
 -- require bringing into scope a new class constraint.
@@ -258,7 +247,6 @@ runBackend b f = case b of
   PostgresCockroachValue x -> f x
   MSSQLValue x -> f x
   BigQueryValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | Dispatch an existential using an universally quantified function while
 -- also resolving a different constraint.
@@ -279,7 +267,6 @@ dispatchAnyBackend e f = case e of
   PostgresCockroachValue x -> f x
   MSSQLValue x -> f x
   BigQueryValue x -> f x
-  DataConnectorValue x -> f x
 
 dispatchAnyBackendWithTwoConstraints ::
   forall
@@ -298,7 +285,6 @@ dispatchAnyBackendWithTwoConstraints e f = case e of
   PostgresCockroachValue x -> f x
   MSSQLValue x -> f x
   BigQueryValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | Unlike 'dispatchAnyBackend', the expected constraint has a different kind.
 -- Use for classes like 'Show', 'ToJSON', etc.
@@ -317,7 +303,6 @@ dispatchAnyBackend' e f = case e of
   PostgresCockroachValue x -> f x
   MSSQLValue x -> f x
   BigQueryValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | This allows you to apply a constraint to the Backend instances (c2)
 -- as well as a constraint on the higher-kinded @i b@ type (c1)
@@ -338,7 +323,6 @@ dispatchAnyBackend'' e f = case e of
   PostgresCockroachValue x -> f x
   MSSQLValue x -> f x
   BigQueryValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | Sometimes we need to run operations on two backends of the same type.
 -- If the backends don't contain the same type, the given @r@ value is returned.
@@ -360,7 +344,6 @@ composeAnyBackend f e1 e2 owise = case (e1, e2) of
   (PostgresCockroachValue x, PostgresCockroachValue y) -> f x y
   (MSSQLValue x, MSSQLValue y) -> f x y
   (BigQueryValue x, BigQueryValue y) -> f x y
-  (DataConnectorValue x, DataConnectorValue y) -> f x y
   (value1, value2) ->
     if mapBackend value1 (Const . const ()) == mapBackend value2 (Const . const ())
       then error "Programming error: missing case in composeAnyBackend"
@@ -383,7 +366,6 @@ mergeAnyBackend f e1 e2 owise = case (e1, e2) of
   (PostgresCockroachValue x, PostgresCockroachValue y) -> PostgresCockroachValue (f x y)
   (MSSQLValue x, MSSQLValue y) -> MSSQLValue (f x y)
   (BigQueryValue x, BigQueryValue y) -> BigQueryValue (f x y)
-  (DataConnectorValue x, DataConnectorValue y) -> DataConnectorValue (f x y)
   (value1, value2) ->
     if mapBackend value1 (Const . const ()) == mapBackend value2 (Const . const ())
       then error "Programming error: missing case in mergeAnyBackend"
@@ -404,7 +386,6 @@ unpackAnyBackend exists = case (backendTag @b, exists) of
   (PostgresCockroachTag, PostgresCockroachValue x) -> Just x
   (MSSQLTag, MSSQLValue x) -> Just x
   (BigQueryTag, BigQueryValue x) -> Just x
-  (DataConnectorTag, DataConnectorValue x) -> Just x
   (tag, value) ->
     if mapBackend (mkAnyBackend tag) (Const . const ()) == mapBackend value (Const . const ())
       then error "Programming error: missing case in unpackAnyBackend"
@@ -445,8 +426,6 @@ dispatchAnyBackendArrow arrow = proc (ab, x) -> do
       arrow @'MSSQL -< (val, x)
     BigQueryValue val ->
       arrow @'BigQuery -< (val, x)
-    DataConnectorValue val ->
-      arrow @'DataConnector -< (val, x)
 
 --------------------------------------------------------------------------------
 
@@ -465,7 +444,6 @@ parseAnyBackendFromJSON backendKind value = case backendKind of
   Postgres Cockroach -> PostgresCockroachValue <$> parseJSON value
   MSSQL -> MSSQLValue <$> parseJSON value
   BigQuery -> BigQueryValue <$> parseJSON value
-  DataConnector -> DataConnectorValue <$> parseJSON value
 
 -- | Codec that can be used to decode and encode @AnyBackend i@ values. Throws
 -- an error when attempting to encode a value with a mismatched @backendKind@
@@ -481,7 +459,6 @@ anyBackendCodec backendKind = case backendKind of
   Postgres Cockroach -> dimapCodec PostgresCockroachValue (\case (PostgresCockroachValue v) -> v; _ -> error msg) $ codec @(i ('Postgres 'Cockroach))
   MSSQL -> dimapCodec MSSQLValue (\case (MSSQLValue v) -> v; _ -> error msg) $ codec @(i 'MSSQL)
   BigQuery -> dimapCodec BigQueryValue (\case (BigQueryValue v) -> v; _ -> error msg) $ codec @(i 'BigQuery)
-  DataConnector -> dimapCodec DataConnectorValue (\case (DataConnectorValue v) -> v; _ -> error msg) $ codec @(i 'DataConnector)
   where
     msg = "got unexpected backend type indicating anyBackendCodec was called with the wrong backendType value"
 
@@ -518,8 +495,6 @@ backendSourceKindFromText text =
     <|> PostgresCockroachValue <$> staticKindFromText PostgresCockroachKind
     <|> MSSQLValue <$> staticKindFromText MSSQLKind
     <|> BigQueryValue <$> staticKindFromText BigQueryKind
-    -- IMPORTANT: This must be the last thing here, since it will accept (almost) any string
-    <|> DataConnectorValue . DataConnectorKind <$> (preview _Right . mkDataConnectorName =<< GQL.mkName text)
   where
     staticKindFromText :: BackendSourceKind b -> Maybe (BackendSourceKind b)
     staticKindFromText kind =
@@ -534,5 +509,3 @@ parseBackendSourceKindFromJSON value =
     <|> PostgresCockroachValue <$> parseJSON @(BackendSourceKind ('Postgres 'Cockroach)) value
     <|> MSSQLValue <$> parseJSON @(BackendSourceKind ('MSSQL)) value
     <|> BigQueryValue <$> parseJSON @(BackendSourceKind ('BigQuery)) value
-    -- IMPORTANT: This must the last thing here, since it will accept (almost) any string
-    <|> DataConnectorValue <$> parseJSON @(BackendSourceKind ('DataConnector)) value

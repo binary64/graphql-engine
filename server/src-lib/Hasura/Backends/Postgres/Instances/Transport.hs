@@ -17,7 +17,7 @@ import Data.HashMap.Strict.InsOrd qualified as InsOrdHashMap
 import Data.Text.Extended
 import Database.PG.Query qualified as PG
 import Hasura.Authentication.User (UserInfo)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
+import Hasura.Server.Types.AgentLicenseKey (AgentLicenseKey)
 import Hasura.Backends.Postgres.Connection.MonadTx
 import Hasura.Backends.Postgres.Execute.Subscription qualified as PGL
 import Hasura.Backends.Postgres.Execute.Types

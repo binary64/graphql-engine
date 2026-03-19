@@ -44,7 +44,7 @@ import Data.Text.Extended (toTxt, (<>>))
 import Data.Vector qualified as Vec
 import Hasura.Authentication.Session (SessionVariable, SessionVariableValue, SessionVariables, filterSessionVariables)
 import Hasura.Authentication.User (UserInfo (..))
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
+import Hasura.Server.Types.AgentLicenseKey (AgentLicenseKey)
 import Hasura.Backends.Postgres.Instances.Transport (runPGMutationTransaction)
 import Hasura.Base.Error
 import Hasura.CredentialCache

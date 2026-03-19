@@ -28,9 +28,6 @@ module Hasura.RQL.DDL.Schema.Source
     GetTableInfo (..),
     runGetTableInfo,
 
-    -- * Legacy Get Table Info
-    GetTableInfo_ (..),
-    runGetTableInfo_,
   )
 where
 
@@ -45,7 +42,6 @@ import Data.Has
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashMap.Strict.InsOrd qualified as InsOrdHashMap
 import Data.Text.Extended
-import Data.Text.Extended qualified as Text.E
 import Hasura.Base.Error
 import Hasura.Base.Error qualified as Error
 import Hasura.EncJSON
@@ -53,9 +49,7 @@ import Hasura.EncJSON qualified as EncJSON
 import Hasura.Logging qualified as L
 import Hasura.Prelude
 import Hasura.RQL.Types.Backend
-import Hasura.RQL.Types.Backend qualified as RQL.Types
 import Hasura.RQL.Types.BackendType
-import Hasura.RQL.Types.BackendType qualified as Backend
 import Hasura.RQL.Types.Common
 import Hasura.RQL.Types.Common qualified as Common
 import Hasura.RQL.Types.HealthCheck (HealthCheckConfig)
@@ -71,7 +65,6 @@ import Hasura.RQL.Types.Source
 import Hasura.RQL.Types.SourceCustomization
 import Hasura.SQL.AnyBackend (AnyBackend)
 import Hasura.SQL.AnyBackend qualified as AB
-import Hasura.SQL.AnyBackend qualified as AnyBackend
 import Hasura.Server.Logging (MetadataLog (..))
 import Hasura.Services
 
@@ -398,41 +391,6 @@ runGetSourceTables GetSourceTables {..} = do
 
 --------------------------------------------------------------------------------
 
-data GetTableInfo_ = GetTableInfo_
-  { _gtiSourceName_ :: Common.SourceName,
-    _gtiTableName_ :: TableName 'DataConnector
-  }
-
-instance FromJSON GetTableInfo_ where
-  parseJSON = J.withObject "GetTableInfo_" \o -> do
-    _gtiSourceName_ <- o .: "source"
-    _gtiTableName_ <- o .: "table"
-    pure $ GetTableInfo_ {..}
-
--- | Legacy data connector command. This doesn't use the DataConnector
--- 'ScalarType' to represent types.
-runGetTableInfo_ ::
-  ( CacheRM m,
-    MonadError Error.QErr m,
-    Metadata.MetadataM m,
-    MonadBaseControl IO m,
-    MonadIO m
-  ) =>
-  GetTableInfo_ ->
-  m EncJSON
-runGetTableInfo_ GetTableInfo_ {..} = do
-  metadata <- Metadata.getMetadata
-
-  let sources = fmap Metadata.unBackendSourceMetadata $ Metadata._metaSources metadata
-  abSourceMetadata <- lookupSourceMetadata _gtiSourceName_ sources
-
-  AnyBackend.dispatchAnyBackend @RQL.Types.Backend abSourceMetadata $ \Metadata.SourceMetadata {_smKind} -> do
-    case _smKind of
-      Backend.DataConnectorKind _dcName -> do
-        fmap EncJSON.encJFromJValue (getTableInfo @'DataConnector _gtiSourceName_ _gtiTableName_)
-      backend ->
-        Error.throw500 ("Schema fetching is not supported for '" <> Text.E.toTxt backend <> "'")
-
 data GetTableInfo (b :: BackendType) = GetTableInfo
   { _gtiSourceName :: Common.SourceName,
     _gtiTableName :: TableName b
@@ -459,10 +417,3 @@ runGetTableInfo ::
 runGetTableInfo GetTableInfo {..} = do
   fmap EncJSON.encJFromJValue (getTableInfo @b _gtiSourceName _gtiTableName)
 
---------------------------------------------------------------------------------
--- Internal helper functions
-
-lookupSourceMetadata :: (MonadError QErr m) => SourceName -> InsOrdHashMap SourceName (AnyBackend SourceMetadata) -> m (AnyBackend SourceMetadata)
-lookupSourceMetadata sourceName sources =
-  InsOrdHashMap.lookup sourceName sources
-    `onNothing` Error.throw400 Error.DataConnectorError ("Source '" <> Text.E.toTxt sourceName <> "' not found")

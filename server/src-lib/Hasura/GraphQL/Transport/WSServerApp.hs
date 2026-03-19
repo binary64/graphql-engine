@@ -14,7 +14,7 @@ import Data.Aeson.Encoding qualified as J
 import Data.ByteString.Char8 qualified as B (pack)
 import Data.Text (pack)
 import Hasura.App.State
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
+import Hasura.Server.Types.AgentLicenseKey (AgentLicenseKey)
 import Hasura.CredentialCache
 import Hasura.GraphQL.Execute qualified as E
 import Hasura.GraphQL.Logging

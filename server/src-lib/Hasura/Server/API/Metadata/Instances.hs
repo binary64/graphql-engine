@@ -65,11 +65,8 @@ instance FromJSON RQLMetadataV1 where
       "update_scope_of_collection_in_allowlist" -> RMUpdateScopeOfCollectionInAllowlist <$> args
       "create_rest_endpoint" -> RMCreateRestEndpoint <$> args
       "drop_rest_endpoint" -> RMDropRestEndpoint <$> args
-      "dc_add_agent" -> RMDCAddAgent <$> args
-      "dc_delete_agent" -> RMDCDeleteAgent <$> args
       "list_source_kinds" -> RMListSourceKinds <$> args
       "get_source_kind_capabilities" -> RMGetSourceKindCapabilities <$> args
-      "get_table_info" -> RMGetTableInfo_ <$> args
       "set_custom_types" -> RMSetCustomTypes <$> args
       "set_api_limits" -> RMSetApiLimits <$> args
       "remove_api_limits" -> pure RMRemoveApiLimits

@@ -15,7 +15,7 @@ import Data.Text.Encoding qualified as T
 import Data.Text.Extended
 import Data.These (These (..))
 import Hasura.Authentication.User (UserInfo)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
+import Hasura.Server.Types.AgentLicenseKey (AgentLicenseKey)
 import Hasura.Base.Error
 import Hasura.CredentialCache
 import Hasura.EncJSON

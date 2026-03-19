@@ -34,7 +34,6 @@ import Hasura.RQL.DDL.ApiLimit
 import Hasura.RQL.DDL.ComputedField
 import Hasura.RQL.DDL.ConnectionTemplate
 import Hasura.RQL.DDL.CustomTypes
-import Hasura.RQL.DDL.DataConnector
 import Hasura.RQL.DDL.Endpoint
 import Hasura.RQL.DDL.EventTrigger
 import Hasura.RQL.DDL.GraphqlSchemaIntrospection
@@ -246,7 +245,6 @@ queryModifiesMetadata = \case
       RMGetSourceTables _ -> False
       RMGetSourceTrackables _ -> False
       RMGetTableInfo _ -> False
-      RMGetTableInfo_ _ -> False
       RMTestConnectionTemplate _ -> False
       RMSuggestRelationships _ -> False
       RMGetNativeQuery _ -> False
@@ -331,8 +329,6 @@ queryModifiesMetadata = \case
       RMUpdateScopeOfCollectionInAllowlist _ -> True
       RMCreateRestEndpoint _ -> True
       RMDropRestEndpoint _ -> True
-      RMDCAddAgent _ -> True
-      RMDCDeleteAgent _ -> True
       RMSetCustomTypes _ -> True
       RMSetApiLimits _ -> True
       RMRemoveApiLimits -> True
@@ -421,7 +417,6 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMGetSourceTables q -> dispatchMetadata runGetSourceTables q
   RMGetSourceTrackables q -> dispatchMetadata runGetSourceTrackables q
   RMGetTableInfo q -> dispatchMetadata runGetTableInfo q
-  RMGetTableInfo_ q -> runGetTableInfo_ q
   RMTrackTable q -> dispatchMetadata runTrackTableV2Q q
   RMTrackTables q -> dispatchMetadata runTrackTablesQ q
   RMUntrackTable q -> dispatchMetadataAndEventTrigger runUntrackTableQ q
@@ -530,8 +525,6 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMUpdateScopeOfCollectionInAllowlist q -> runUpdateScopeOfCollectionInAllowlist q
   RMCreateRestEndpoint q -> runCreateEndpoint q
   RMDropRestEndpoint q -> runDropEndpoint q
-  RMDCAddAgent q -> runAddDataConnectorAgent env q
-  RMDCDeleteAgent q -> runDeleteDataConnectorAgent q
   RMSetCustomTypes q -> runSetCustomTypes q
   RMSetApiLimits q -> runSetApiLimits q
   RMRemoveApiLimits -> runRemoveApiLimits

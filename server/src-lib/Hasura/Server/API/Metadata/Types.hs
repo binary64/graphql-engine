@@ -14,7 +14,7 @@ import Hasura.NativeQuery.API qualified as NativeQueries
 import Hasura.RQL.DDL.Action
 import Hasura.RQL.DDL.ComputedField
 import Hasura.RQL.DDL.ConnectionTemplate
-import Hasura.RQL.DDL.DataConnector
+
 import Hasura.RQL.DDL.EventTrigger
 import Hasura.RQL.DDL.Metadata
 import Hasura.RQL.DDL.Permission
@@ -54,7 +54,6 @@ data RQLMetadataV1
   | RMGetSourceTables !(AnyBackend GetSourceTables)
   | RMGetSourceTrackables !(AnyBackend GetSourceTrackables)
   | RMGetTableInfo !(AnyBackend GetTableInfo)
-  | RMGetTableInfo_ !GetTableInfo_
   | -- Tables
     RMTrackTable !(AnyBackend TrackTableV2)
   | RMTrackTables !(AnyBackend TrackTables)
@@ -160,9 +159,6 @@ data RQLMetadataV1
   | -- Rest endpoints
     RMCreateRestEndpoint !CreateEndpoint
   | RMDropRestEndpoint !DropEndpoint
-  | -- GraphQL Data Connectors
-    RMDCAddAgent !DCAddAgent
-  | RMDCDeleteAgent !DCDeleteAgent
   | -- Custom types
     RMSetCustomTypes !CustomTypes
   | -- Api limits

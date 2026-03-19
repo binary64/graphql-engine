@@ -8,8 +8,6 @@ module Hasura.RQL.IR.ModelInformation
     getMutationInsertArgumentModelNamesPostgres,
     -- MSSQL
     getMutationInsertArgumentModelNamesMSSQL,
-    -- DataConnector
-    getMutationInsertArgumentModelNamesDC,
     -- Common
     irToModelInfoGen,
     getArgumentModelNamesGen,
@@ -261,7 +259,6 @@ getArgumentModelNamesGen sourceName modelSourceType args = case args of
               Postgres _ -> ModelSourceTypePostgres
               MSSQL -> ModelSourceTypeMSSQL
               BigQuery -> ModelSourceTypeBigQuery
-              DataConnector -> ModelSourceTypeDataConnector
         modify $ (++) [ModelNameInfo (toTxt $ tableName, ModelTypeRemoteSchema, sourceName', modelSourceType')]
 
 {--
@@ -710,15 +707,3 @@ getMutationInsertArgumentModelNamesMSSQL sourceName modelSourceType insertOperat
       (_, res') <- flip runStateT [] $ getArgumentModelNamesGen sourceName modelSourceType $ argModelBoolExp
       modify $ (++) res'
 
--- Similar to `getMutationInsertArgumentModelNamesPostgres` but for DataConnector. Note: DataConnector doesn't have any
--- conflict clause.
-getMutationInsertArgumentModelNamesDC ::
-  forall f m.
-  (MonadState [ModelNameInfo] m) =>
-  SourceName ->
-  ModelSourceType ->
-  AnnotatedInsertData 'DataConnector f (UnpreparedValue 'DataConnector) ->
-  m ()
-getMutationInsertArgumentModelNamesDC sourceName modelSourceType insertOperation = do
-  let (modelName, modelType) = (toTxt (_aiTableName $ insertOperation), ModelTypeTable)
-  modify $ (++) [ModelNameInfo (modelName, modelType, sourceName, modelSourceType)]

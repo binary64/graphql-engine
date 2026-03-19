@@ -89,7 +89,6 @@ data Code
     CustomCode !Text
   | CyclicDependency
   | DataException
-  | DataConnectorError
   | DependencyError
   | InvalidConfiguration
   | InvalidHeaders
@@ -139,7 +138,6 @@ instance ToJSON Code where
     CustomCode t -> t
     CyclicDependency -> "cyclic-dependency"
     DataException -> "data-exception"
-    DataConnectorError -> "data-connector-error"
     DependencyError -> "dependency-error"
     InvalidConfiguration -> "invalid-configuration"
     InvalidHeaders -> "invalid-headers"

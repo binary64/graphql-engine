@@ -284,7 +284,6 @@ common lib-depends
                      , bytestring
                      , containers
                      , data-default
-                     , dc-api
                      , deepseq
                      , dependent-map >=0.4 && <0.5
                      , dependent-sum
@@ -642,23 +641,6 @@ library
                      , Hasura.Backends.Postgres.Types.Update
 
                      -- GraphQL Data Connector
-                     , Hasura.Backends.DataConnector.Adapter.API
-                     , Hasura.Backends.DataConnector.Adapter.Backend
-                     , Hasura.Backends.DataConnector.Adapter.Execute
-                     , Hasura.Backends.DataConnector.Adapter.ConfigTransform
-                     , Hasura.Backends.DataConnector.Adapter.RunSQL
-                     , Hasura.Backends.DataConnector.Adapter.Metadata
-                     , Hasura.Backends.DataConnector.Adapter.Schema
-                     , Hasura.Backends.DataConnector.Adapter.SchemaCache
-                     , Hasura.Backends.DataConnector.Adapter.Transport
-                     , Hasura.Backends.DataConnector.Adapter.Types
-                     , Hasura.Backends.DataConnector.Adapter.Types.Mutations
-                     , Hasura.Backends.DataConnector.Agent.Client
-                     , Hasura.Backends.DataConnector.Logging
-                     , Hasura.Backends.DataConnector.Plan.Common
-                     , Hasura.Backends.DataConnector.Plan.MutationPlan
-                     , Hasura.Backends.DataConnector.Plan.QueryPlan
-                     , Hasura.Backends.DataConnector.Plan.RemoteRelationshipPlan
 
                      -- Exposed for benchmark:
                      , Hasura.Cache.Bounded
@@ -703,6 +685,7 @@ library
                      , Hasura.Server.ResourceChecker
                      , Hasura.Server.Rest
                      , Hasura.Server.Types
+                     , Hasura.Server.Types.AgentLicenseKey
                      , Hasura.Server.Utils
                      , Hasura.Server.Version
                      , Hasura.ShutdownLatch
@@ -823,7 +806,6 @@ library
                      , Hasura.RQL.Types.ComputedField
                      , Hasura.RQL.Types.ComputedField.Name
                      , Hasura.RQL.Types.CustomTypes
-                     , Hasura.RQL.Types.DataConnector
                      , Hasura.RQL.Types.EECredentials
                      , Hasura.RQL.Types.Endpoint
                      , Hasura.RQL.Types.Endpoint.Trie
@@ -881,7 +863,6 @@ library
                      , Hasura.RQL.DDL.ComputedField
                      , Hasura.RQL.DDL.ConnectionTemplate
                      , Hasura.RQL.DDL.CustomTypes
-                     , Hasura.RQL.DDL.DataConnector
                      , Hasura.RQL.DDL.Endpoint
                      , Hasura.RQL.DDL.GraphqlSchemaIntrospection
                      , Hasura.RQL.DDL.InheritedRoles
@@ -1115,7 +1096,6 @@ test-suite graphql-engine-tests
     , dependent-map
     , dependent-sum
     , ekg-core
-    , dc-api
     , free
     , graphql-parser
     , data-has
@@ -1194,21 +1174,6 @@ test-suite graphql-engine-tests
     Hasura.Base.Error.TestInstances
     Hasura.Backends.BigQuery.SourceSpec
     Hasura.Backends.BigQuery.TypesSpec
-    Hasura.Backends.DataConnector.Adapter.TypesSpec
-    Hasura.Backends.DataConnector.API.V0.AggregateSpec
-    Hasura.Backends.DataConnector.API.V0.CapabilitiesSpec
-    Hasura.Backends.DataConnector.API.V0.ColumnSpec
-    Hasura.Backends.DataConnector.API.V0.ConfigSchemaSpec
-    Hasura.Backends.DataConnector.API.V0.ExpressionSpec
-    Hasura.Backends.DataConnector.API.V0.FunctionSpec
-    Hasura.Backends.DataConnector.API.V0.MutationsSpec
-    Hasura.Backends.DataConnector.API.V0.OrderBySpec
-    Hasura.Backends.DataConnector.API.V0.QuerySpec
-    Hasura.Backends.DataConnector.API.V0.RelationshipsSpec
-    Hasura.Backends.DataConnector.API.V0.ScalarSpec
-    Hasura.Backends.DataConnector.API.V0.SchemaSpec
-    Hasura.Backends.DataConnector.API.V0.TableSpec
-    Hasura.Backends.DataConnector.API.V0.TargetSpec
     Hasura.Backends.Postgres.Connection.VersionCheckSpec
     Hasura.Backends.Postgres.Execute.PrepareSpec
     Hasura.Backends.Postgres.NativeQueries.NativeQueriesSpec

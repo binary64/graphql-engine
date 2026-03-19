@@ -20,23 +20,14 @@ where
 
 import Data.Aeson (FromJSON, ToJSON, (.:), (.:?), (.=))
 import Data.Aeson qualified as J
-import Data.HashMap.Strict qualified as HashMap
-import Data.Map.Strict qualified as Map
 import Data.Text.Extended (ToTxt (..))
-import Data.Text.Extended qualified as Text.E
 import Data.Text.NonEmpty (NonEmptyText)
-import Data.Text.NonEmpty qualified as NE.Text
-import Hasura.Backends.DataConnector.Adapter.Types qualified as DC.Types
 import Hasura.Base.Error qualified as Error
 import Hasura.EncJSON (EncJSON)
 import Hasura.EncJSON qualified as EncJSON
 import Hasura.Prelude
 import Hasura.RQL.Types.BackendType qualified as Backend
-import Hasura.RQL.Types.Metadata qualified as Metadata
 import Hasura.RQL.Types.SchemaCache qualified as SchemaCache
-import Hasura.SQL.AnyBackend qualified as AB
-import Hasura.SQL.BackendMap qualified as BackendMap
-import Language.GraphQL.Draft.Syntax qualified as GQL
 
 --------------------------------------------------------------------------------
 
@@ -99,76 +90,38 @@ newtype SourceKinds = SourceKinds {unSourceKinds :: [SourceKindInfo]}
 instance ToJSON SourceKinds where
   toJSON SourceKinds {..} = J.object ["sources" .= unSourceKinds]
 
-agentSourceKinds :: (Metadata.MetadataM m) => m SourceKinds
-agentSourceKinds = do
-  agentsM <- BackendMap.lookup @'Backend.DataConnector . Metadata._metaBackendConfigs <$> Metadata.getMetadata
-  case agentsM of
-    Nothing -> pure mempty
-    Just (Metadata.BackendConfigWrapper agents) ->
-      pure $ SourceKinds $ fmap mkAgentSource $ Map.toList agents
-
-mkAgentSource :: (DC.Types.DataConnectorName, DC.Types.DataConnectorOptions) -> SourceKindInfo
-mkAgentSource (dcName, DC.Types.DataConnectorOptions {_dcoDisplayName}) =
-  SourceKindInfo
-    { _skiSourceKind = skiKind,
-      _skiDisplayName = _dcoDisplayName,
-      _skiReleaseName = Nothing,
-      _skiBuiltin = Agent,
-      _skiAvailable = True
-    }
-  where
-    skiKind = GQL.unName (DC.Types.unDataConnectorName dcName)
+-- | Agent source kinds are no longer supported (DataConnector backend removed).
+agentSourceKinds :: (Monad m) => m SourceKinds
+agentSourceKinds = pure mempty
 
 mkNativeSource :: Backend.BackendType -> Maybe SourceKindInfo
-mkNativeSource = \case
-  Backend.DataConnector -> Nothing
-  b ->
-    Just
-      SourceKindInfo
-        { _skiSourceKind = fromMaybe (toTxt b) (Backend.backendShortName b),
-          _skiBuiltin = Builtin,
-          _skiDisplayName = Nothing,
-          _skiReleaseName = Nothing,
-          _skiAvailable = True
-        }
+mkNativeSource b =
+  Just
+    SourceKindInfo
+      { _skiSourceKind = fromMaybe (toTxt b) (Backend.backendShortName b),
+        _skiBuiltin = Builtin,
+        _skiDisplayName = Nothing,
+        _skiReleaseName = Nothing,
+        _skiAvailable = True
+      }
 
 builtinSourceKinds :: SourceKinds
 builtinSourceKinds =
-  SourceKinds $ mapMaybe mkNativeSource (filter (/= Backend.DataConnector) Backend.supportedBackends)
+  SourceKinds $ mapMaybe mkNativeSource Backend.supportedBackends
 
--- | Collect 'SourceKindInfo' from Native and GDC backend types.
-collectSourceKinds :: (Metadata.MetadataM m) => m SourceKinds
+-- | Collect 'SourceKindInfo' from Native backend types.
+collectSourceKinds :: (Monad m) => m SourceKinds
 collectSourceKinds = fmap (builtinSourceKinds <>) agentSourceKinds
 
 runListSourceKinds ::
   forall m.
-  ( Metadata.MetadataM m,
+  ( Monad m,
     MonadError Error.QErr m,
     SchemaCache.CacheRM m
   ) =>
   ListSourceKinds ->
   m EncJSON
-runListSourceKinds ListSourceKinds = fmap EncJSON.encJFromJValue $ do
-  sks <- collectSourceKinds
-  fmap SourceKinds $ traverse setNames $ unSourceKinds sks
-  where
-    setNames :: SourceKindInfo -> m SourceKindInfo
-    setNames ski@SourceKindInfo {_skiSourceKind, _skiDisplayName} =
-      -- If there are issues fetching the capabilities for an agent, then list it as unavailable.
-      flip catchError (const $ pure $ ski {_skiAvailable = False}) do
-        ci <- getSourceKindCapabilities ski
-        -- Prefer metadata, then capabilities, then source-kind key
-        pure
-          ski
-            { _skiReleaseName = DC.Types._dciReleaseName =<< ci,
-              _skiDisplayName = asum [_skiDisplayName, (DC.Types._dciDisplayName =<< ci), Just _skiSourceKind]
-            }
-
-    getSourceKindCapabilities :: SourceKindInfo -> m (Maybe DC.Types.DataConnectorInfo)
-    getSourceKindCapabilities SourceKindInfo {_skiSourceKind, _skiBuiltin} = case (_skiBuiltin, NE.Text.mkNonEmptyText _skiSourceKind) of
-      (Builtin, _) -> pure Nothing
-      (Agent, Nothing) -> pure Nothing
-      (Agent, Just nesk) -> Just <$> runGetSourceKindCapabilities' (GetSourceKindCapabilities nesk)
+runListSourceKinds ListSourceKinds = fmap EncJSON.encJFromJValue collectSourceKinds
 
 --------------------------------------------------------------------------------
 
@@ -179,35 +132,13 @@ instance FromJSON GetSourceKindCapabilities where
     _gskcKind <- o .: "name"
     pure $ GetSourceKindCapabilities {..}
 
--- | List Backend Capabilities. Currently this only supports Data Connector Backends.
+-- | List Backend Capabilities. DataConnector backends are no longer supported.
 runGetSourceKindCapabilities ::
   ( MonadError Error.QErr m,
     SchemaCache.CacheRM m
   ) =>
   GetSourceKindCapabilities ->
   m EncJSON
-runGetSourceKindCapabilities x = EncJSON.encJFromJValue <$> runGetSourceKindCapabilities' x
-
--- | Main implementation of runGetSourceKindCapabilities that actually returns the DataConnectorInfo
--- and defers json encoding to `runGetSourceKindCapabilities`. This allows reuse and ensures a
--- correct assembly of DataConnectorInfo
-runGetSourceKindCapabilities' ::
-  ( MonadError Error.QErr m,
-    SchemaCache.CacheRM m
-  ) =>
-  GetSourceKindCapabilities ->
-  m DC.Types.DataConnectorInfo
-runGetSourceKindCapabilities' GetSourceKindCapabilities {..} = do
-  case AB.backendSourceKindFromText $ NE.Text.unNonEmptyText _gskcKind of
-    Just backendSourceKind ->
-      case AB.unpackAnyBackend @'Backend.DataConnector backendSourceKind of
-        Just (Backend.DataConnectorKind dataConnectorName) -> do
-          backendCache <- fmap SchemaCache.scBackendCache $ SchemaCache.askSchemaCache
-          let capabilitiesMap = maybe mempty SchemaCache.unBackendInfoWrapper $ BackendMap.lookup @'Backend.DataConnector backendCache
-          HashMap.lookup dataConnectorName capabilitiesMap
-            `onNothing` Error.throw400 Error.DataConnectorError ("Source Kind " <> Text.E.toTxt dataConnectorName <> " was not found")
-        Nothing ->
-          -- Must be a native backend
-          Error.throw400 Error.DataConnectorError (Text.E.toTxt _gskcKind <> " does not support Capabilities")
-    Nothing ->
-      Error.throw400 Error.DataConnectorError ("Source Kind " <> Text.E.toTxt _gskcKind <> " was not found")
+runGetSourceKindCapabilities GetSourceKindCapabilities {..} =
+  Error.throw400 Error.NotSupported
+    $ "Capabilities are not supported for source kind: " <> toTxt _gskcKind

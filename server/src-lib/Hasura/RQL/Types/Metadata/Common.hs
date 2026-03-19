@@ -171,15 +171,11 @@ backendSourceMetadataCodec :: JSONCodec BackendSourceMetadata
 backendSourceMetadataCodec =
   named "SourceMetadata"
     $
-    -- Attempt to match against @SourceMetadata@ codecs for each native backend
-    -- type. If none match then apply the @SourceMetadata DataConnector@ codec.
-    -- DataConnector is the fallback case because the possible values for its
-    -- @_smKind@ property are not statically-known so it is difficult to
-    -- unambiguously distinguish a native source value from a dataconnector
-    -- source.
+    -- Attempt to match against @SourceMetadata@ codecs for each backend type.
+    -- BigQuery is the fallback since all backends are now statically known.
     disjointMatchChoicesCodec
-      (matcherWithBackendCodec <$> filter (/= DataConnector) supportedBackends) -- list of codecs to try
-      (mkCodec (backendTag @('DataConnector))) -- codec for fallback case
+      (matcherWithBackendCodec <$> filter (/= BigQuery) supportedBackends) -- list of codecs to try
+      (mkCodec (backendTag @('BigQuery))) -- codec for fallback case
   where
     matcherWithBackendCodec :: BackendType -> (BackendSourceMetadata -> Maybe BackendSourceMetadata, JSONCodec BackendSourceMetadata)
     matcherWithBackendCodec backendType =

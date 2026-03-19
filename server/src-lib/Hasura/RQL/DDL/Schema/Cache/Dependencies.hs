@@ -37,7 +37,6 @@ import Hasura.RQL.Types.SchemaCacheTypes
 import Hasura.RQL.Types.Source
 import Hasura.RemoteSchema.SchemaCache (rscPermissions, rscRemoteRelationships)
 import Hasura.SQL.AnyBackend qualified as AB
-import Hasura.SQL.BackendMap qualified as BackendMap
 import Hasura.StoredProcedure.Cache (StoredProcedureInfo (_spiReturns))
 import Hasura.Table.Cache
 import Language.GraphQL.Draft.Syntax qualified as G
@@ -323,9 +322,6 @@ deleteMetadataObject = \case
   MOAction name -> boActions %~ HashMap.delete name
   MOActionPermission name role -> boActions . ix name . aiPermissions %~ HashMap.delete role
   MOInheritedRole name -> boRoles %~ HashMap.delete name
-  MODataConnectorAgent agentName ->
-    boBackendCache
-      %~ (BackendMap.modify @'DataConnector $ BackendInfoWrapper . HashMap.delete agentName . unBackendInfoWrapper)
   -- These parts of Metadata never become inconsistent as a result of
   -- inconsistencies elsewhere, i.e. they don't have metadata dependencies.  So
   -- we never need to prune them, and in fact don't even bother storing them in
