@@ -58,6 +58,9 @@ COPY . .
 # Remove freeze file — it's pinned to GHC 9.10.2's base, incompatible with 9.10.3
 RUN rm -f cabal.project.freeze
 
+# Remove test packages that depend on dc-agents (excluded from Docker context via .dockerignore)
+RUN rm -rf server/lib/api-tests server/lib/test-harness server/lib/upgrade-tests
+
 # Build: fetch deps then compile (single-threaded to keep memory low)
 RUN cabal update \
     && cabal build graphql-engine --only-dependencies -j2 \
