@@ -55,6 +55,9 @@ CABALEOF
 # Copy everything else
 COPY . .
 
+# Remove freeze file — it's pinned to GHC 9.10.2's base, incompatible with 9.10.3
+RUN rm -f cabal.project.freeze
+
 # Build: fetch deps then compile (single-threaded to keep memory low)
 RUN cabal update \
     && cabal build graphql-engine --only-dependencies -j2 \
