@@ -27,7 +27,7 @@
 --   curl 'https://drive.usercontent.google.com/download?id=1ZYKOwmwINRNzo9M2PkdpDX7htgQ98oMG&export=download&confirm=t' --output 9.10.1-fork-bindist.tar.xz
 --   ghcup install ghc -u file:///9.10.1-fork-bindist.tar.xz
 -- 
-with-compiler: ghc-9.10.2
+with-compiler: ghc-9.10.3
 
 -- package-level parallelism:
 jobs: $ncpus
