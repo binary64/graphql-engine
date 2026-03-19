@@ -32,7 +32,7 @@ executable-dynamic: False
 library-vanilla: True
 
 package *
-  ghc-options: -j1 +RTS -A64m -n2m -M6500m -RTS
+  ghc-options: -j1 +RTS -A64m -n2m -M6500m -RTS -Wno-error=unused-packages
 
 package hedis
   library-vanilla: True
