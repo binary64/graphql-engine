@@ -10,7 +10,6 @@ import Data.HashMap.Strict.InsOrd qualified as InsOrdHashMap
 import Hasura.Authentication.Role (adminRoleName)
 import Hasura.Authentication.Session (SessionVariables)
 import Hasura.Authentication.User (UserAdminSecret (..), UserInfo, UserRoleBuild (..), mkUserInfo)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Base.Error
 import Hasura.CredentialCache
 import Hasura.EncJSON

@@ -2,6 +2,7 @@
 -- access tokens or JWTs.
 module Hasura.CredentialCache
   ( CredentialCache (..),
+    AgentLicenseKey,
   )
 where
 
@@ -15,3 +16,7 @@ newtype CredentialCache cred = CredentialCache
     getCredential :: STM (cred, STM (STM ()))
   }
   deriving stock (Functor)
+
+-- | Stub type formerly used by the DataConnector backend for license key authentication.
+-- Retained for API compatibility with transport layer signatures.
+data AgentLicenseKey

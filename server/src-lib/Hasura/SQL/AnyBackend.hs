@@ -112,7 +112,6 @@ where
 import Autodocodec (HasCodec (codec), JSONCodec, dimapCodec)
 import Control.Applicative
 import Control.Arrow.Extended (ArrowChoice)
-import Control.Lens (preview, _Right)
 import Data.Aeson
 import Data.Aeson.Extended
 import Data.Aeson.Key qualified as Key
@@ -121,8 +120,6 @@ import Data.Kind (Constraint, Type)
 import Hasura.Prelude
 import Hasura.RQL.Types.BackendTag
 import Hasura.RQL.Types.BackendType
-import Hasura.RQL.Types.DataConnector (mkDataConnectorName)
-import Language.GraphQL.Draft.Syntax qualified as GQL
 
 --------------------------------------------------------------------------------
 
@@ -141,21 +138,18 @@ import Language.GraphQL.Draft.Syntax qualified as GQL
 -- @HashMap SourceName (AnyBackend SourceInfo)@.
 data AnyBackend (i :: BackendType -> Type)
   = PostgresVanillaValue (i ('Postgres 'Vanilla))
-  | DataConnectorValue (i 'DataConnector)
   deriving (Generic)
 
 -- | Generates a constraint for all backends.
 type AllBackendsSatisfy (c :: BackendType -> Constraint) =
-  ( c ('Postgres 'Vanilla),
-    c 'DataConnector
+  ( c ('Postgres 'Vanilla)
   )
 
 -- | Generates a constraint for a generic type over all backends.
 type SatisfiesForAllBackends
   (i :: BackendType -> Type)
   (c :: Type -> Constraint) =
-  ( c (i ('Postgres 'Vanilla)),
-    c (i 'DataConnector)
+  ( c (i ('Postgres 'Vanilla))
   )
 
 --------------------------------------------------------------------------------
@@ -165,12 +159,10 @@ type SatisfiesForAllBackends
 -- | How to obtain a tag from a runtime value.
 liftTag :: BackendType -> AnyBackend BackendTag
 liftTag (Postgres Vanilla) = PostgresVanillaValue PostgresVanillaTag
-liftTag DataConnector = DataConnectorValue DataConnectorTag
 
 -- | Obtain a @BackendType@ from a runtime value.
 lowerTag :: AnyBackend i -> BackendType
 lowerTag (PostgresVanillaValue _) = Postgres Vanilla
-lowerTag (DataConnectorValue _) = DataConnector
 
 -- | Transforms an @AnyBackend i@ into an @AnyBackend j@.
 mapBackend ::
@@ -182,7 +174,6 @@ mapBackend ::
   AnyBackend j
 mapBackend e f = case e of
   PostgresVanillaValue x -> PostgresVanillaValue (f x)
-  DataConnectorValue x -> DataConnectorValue (f x)
 
 -- | Traverse an @AnyBackend i@ into an @f (AnyBackend j)@.
 traverseBackend ::
@@ -197,7 +188,6 @@ traverseBackend ::
   f (AnyBackend j)
 traverseBackend e f = case e of
   PostgresVanillaValue x -> PostgresVanillaValue <$> f x
-  DataConnectorValue x -> DataConnectorValue <$> f x
 
 -- | Creates a new @AnyBackend i@ for a given backend @b@ by wrapping the given @i b@.
 mkAnyBackend ::
@@ -209,7 +199,6 @@ mkAnyBackend ::
   AnyBackend i
 mkAnyBackend x = case backendTag @b of
   PostgresVanillaTag -> PostgresVanillaValue x
-  DataConnectorTag -> DataConnectorValue x
 
 -- | Dispatch a function to the value inside the @AnyBackend@, that does not
 -- require bringing into scope a new class constraint.
@@ -222,7 +211,6 @@ runBackend ::
   r
 runBackend b f = case b of
   PostgresVanillaValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | Dispatch an existential using an universally quantified function while
 -- also resolving a different constraint.
@@ -239,7 +227,6 @@ dispatchAnyBackend ::
   r
 dispatchAnyBackend e f = case e of
   PostgresVanillaValue x -> f x
-  DataConnectorValue x -> f x
 
 dispatchAnyBackendWithTwoConstraints ::
   forall
@@ -254,7 +241,6 @@ dispatchAnyBackendWithTwoConstraints ::
   r
 dispatchAnyBackendWithTwoConstraints e f = case e of
   PostgresVanillaValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | Unlike 'dispatchAnyBackend', the expected constraint has a different kind.
 -- Use for classes like 'Show', 'ToJSON', etc.
@@ -269,7 +255,6 @@ dispatchAnyBackend' ::
   r
 dispatchAnyBackend' e f = case e of
   PostgresVanillaValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | This allows you to apply a constraint to the Backend instances (c2)
 -- as well as a constraint on the higher-kinded @i b@ type (c1)
@@ -286,7 +271,6 @@ dispatchAnyBackend'' ::
   r
 dispatchAnyBackend'' e f = case e of
   PostgresVanillaValue x -> f x
-  DataConnectorValue x -> f x
 
 -- | Sometimes we need to run operations on two backends of the same type.
 -- If the backends don't contain the same type, the given @r@ value is returned.
@@ -304,7 +288,6 @@ composeAnyBackend ::
   r
 composeAnyBackend f e1 e2 owise = case (e1, e2) of
   (PostgresVanillaValue x, PostgresVanillaValue y) -> f x y
-  (DataConnectorValue x, DataConnectorValue y) -> f x y
   (value1, value2) ->
     if mapBackend value1 (Const . const ()) == mapBackend value2 (Const . const ())
       then error "Programming error: missing case in composeAnyBackend"
@@ -323,7 +306,6 @@ mergeAnyBackend ::
   AnyBackend i
 mergeAnyBackend f e1 e2 owise = case (e1, e2) of
   (PostgresVanillaValue x, PostgresVanillaValue y) -> PostgresVanillaValue (f x y)
-  (DataConnectorValue x, DataConnectorValue y) -> DataConnectorValue (f x y)
   (value1, value2) ->
     if mapBackend value1 (Const . const ()) == mapBackend value2 (Const . const ())
       then error "Programming error: missing case in mergeAnyBackend"
@@ -340,7 +322,6 @@ unpackAnyBackend ::
   Maybe (i b)
 unpackAnyBackend exists = case (backendTag @b, exists) of
   (PostgresVanillaTag, PostgresVanillaValue x) -> Just x
-  (DataConnectorTag, DataConnectorValue x) -> Just x
   (tag, value) ->
     if mapBackend (mkAnyBackend tag) (Const . const ()) == mapBackend value (Const . const ())
       then error "Programming error: missing case in unpackAnyBackend"
@@ -373,8 +354,6 @@ dispatchAnyBackendArrow arrow = proc (ab, x) -> do
   case ab of
     PostgresVanillaValue val ->
       arrow @('Postgres 'Vanilla) -< (val, x)
-    DataConnectorValue val ->
-      arrow @'DataConnector -< (val, x)
 
 --------------------------------------------------------------------------------
 
@@ -389,7 +368,6 @@ parseAnyBackendFromJSON ::
   Parser (AnyBackend i)
 parseAnyBackendFromJSON backendKind value = case backendKind of
   Postgres Vanilla -> PostgresVanillaValue <$> parseJSON value
-  DataConnector -> DataConnectorValue <$> parseJSON value
 
 -- | Codec that can be used to decode and encode @AnyBackend i@ values. Throws
 -- an error when attempting to encode a value with a mismatched @backendKind@
@@ -401,7 +379,6 @@ anyBackendCodec ::
   JSONCodec (AnyBackend i)
 anyBackendCodec backendKind = case backendKind of
   Postgres Vanilla -> dimapCodec PostgresVanillaValue (\case (PostgresVanillaValue v) -> v; _ -> error msg) $ codec @(i ('Postgres 'Vanilla))
-  DataConnector -> dimapCodec DataConnectorValue (\case (DataConnectorValue v) -> v; _ -> error msg) $ codec @(i 'DataConnector)
   where
     msg = "got unexpected backend type indicating anyBackendCodec was called with the wrong backendType value"
 
@@ -434,8 +411,6 @@ instance (i `SatisfiesForAllBackends` FromJSON) => FromJSONKeyValue (AnyBackend 
 backendSourceKindFromText :: Text -> Maybe (AnyBackend BackendSourceKind)
 backendSourceKindFromText text =
   PostgresVanillaValue <$> staticKindFromText PostgresVanillaKind
-    -- IMPORTANT: This must be the last thing here, since it will accept (almost) any string
-    <|> DataConnectorValue . DataConnectorKind <$> (preview _Right . mkDataConnectorName =<< GQL.mkName text)
   where
     staticKindFromText :: BackendSourceKind b -> Maybe (BackendSourceKind b)
     staticKindFromText kind =
@@ -446,5 +421,3 @@ backendSourceKindFromText text =
 parseBackendSourceKindFromJSON :: Value -> Parser (AnyBackend BackendSourceKind)
 parseBackendSourceKindFromJSON value =
   PostgresVanillaValue <$> parseJSON @(BackendSourceKind ('Postgres 'Vanilla)) value
-    -- IMPORTANT: This must the last thing here, since it will accept (almost) any string
-    <|> DataConnectorValue <$> parseJSON @(BackendSourceKind ('DataConnector)) value

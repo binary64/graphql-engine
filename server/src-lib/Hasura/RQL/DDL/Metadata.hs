@@ -84,7 +84,6 @@ import Hasura.RQL.Types.SchemaCache.Build
 import Hasura.RQL.Types.Source (unsafeSourceInfo)
 import Hasura.RQL.Types.SourceCustomization
 import Hasura.SQL.AnyBackend qualified as AB
-import Hasura.SQL.BackendMap qualified as BackendMap
 import Hasura.Server.Logging (MetadataLog (..))
 import Hasura.Server.Types (MonadGetPolicies (..))
 import Hasura.StoredProcedure.API (dropStoredProcedureInMetadata)
@@ -355,7 +354,6 @@ runReplaceMetadataV2' ReplaceMetadataV2 {..} = do
           { ciMetadata = False,
             ciRemoteSchemas = mempty,
             ciSources = HS.fromList $ InsOrdHashMap.keys newSources,
-            ciDataConnectors = mempty
           }
 
   -- put the new metadata in the state managed by the `MetadataT`
@@ -606,14 +604,10 @@ runExportMetadataV2 currentResourceVersion ExportMetadata {} = do
       ]
 
 runReloadMetadata :: (QErrM m, CacheRWM m, MetadataM m) => ReloadMetadata -> m EncJSON
-runReloadMetadata (ReloadMetadata reloadRemoteSchemas reloadSources reloadRecreateEventTriggers reloadDataConnectors) = do
+runReloadMetadata (ReloadMetadata reloadRemoteSchemas reloadSources reloadRecreateEventTriggers _reloadDataConnectors) = do
   metadata <- getMetadata
   let allSources = HS.fromList $ InsOrdHashMap.keys $ _metaSources metadata
       allRemoteSchemas = HS.fromList $ InsOrdHashMap.keys $ _metaRemoteSchemas metadata
-      allDataConnectors =
-        maybe mempty (HS.fromList . Map.keys . unBackendConfigWrapper)
-          $ BackendMap.lookup @'DataConnector
-          $ _metaBackendConfigs metadata
       checkRemoteSchema name =
         unless (HS.member name allRemoteSchemas)
           $ throw400 NotExists
@@ -626,12 +620,6 @@ runReloadMetadata (ReloadMetadata reloadRemoteSchemas reloadSources reloadRecrea
           $ "Source with name "
           <> name
           <<> " not found in metadata"
-      checkDataConnector name =
-        unless (HS.member name allDataConnectors)
-          $ throw400 NotExists
-          $ "Data connector with name "
-          <> name
-          <<> " not found in metadata"
 
   remoteSchemaInvalidations <- case reloadRemoteSchemas of
     RSReloadAll -> pure allRemoteSchemas
@@ -642,16 +630,12 @@ runReloadMetadata (ReloadMetadata reloadRemoteSchemas reloadSources reloadRecrea
   recreateEventTriggersSources <- case reloadRecreateEventTriggers of
     RSReloadAll -> pure allSources
     RSReloadList l -> mapM_ checkSource l *> pure l
-  dataConnectorInvalidations <- case reloadDataConnectors of
-    RSReloadAll -> pure allDataConnectors
-    RSReloadList l -> mapM_ checkDataConnector l *> pure l
 
   let cacheInvalidations =
         CacheInvalidations
           { ciMetadata = True,
             ciRemoteSchemas = remoteSchemaInvalidations,
-            ciSources = sourcesInvalidations,
-            ciDataConnectors = dataConnectorInvalidations
+            ciSources = sourcesInvalidations
           }
 
   buildSchemaCacheWithOptions (CatalogUpdate $ Just recreateEventTriggersSources) cacheInvalidations metadata Nothing
@@ -728,10 +712,8 @@ purgeMetadataObj = \case
   MOEndpoint epName -> dropEndpointInMetadata epName
   MOInheritedRole role -> dropInheritedRoleInMetadata role
   MOQueryCollectionsQuery cName lq -> dropListedQueryFromQueryCollections cName lq
-  MODataConnectorAgent agentName ->
-    MetadataModifier
-      $ metaBackendConfigs
-      %~ BackendMap.modify @'DataConnector (BackendConfigWrapper . Map.delete agentName . unBackendConfigWrapper)
+  MODataConnectorAgent _agentName ->
+    mempty -- DataConnector removed; no-op
   MOOpenTelemetry subobject ->
     case subobject of
       OtelSubobjectAll ->

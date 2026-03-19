@@ -17,7 +17,6 @@ import Data.Text.Extended
 import Database.MSSQL.Transaction (forJsonQueryE)
 import Database.ODBC.SQLServer qualified as ODBC
 import Hasura.Authentication.User (UserInfo)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Backends.MSSQL.Connection
 import Hasura.Backends.MSSQL.Execute.QueryTags (withQueryTags)
 import Hasura.Backends.MSSQL.Instances.Execute

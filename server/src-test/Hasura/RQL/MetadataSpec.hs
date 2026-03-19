@@ -12,7 +12,7 @@ where
 
 -------------------------------------------------------------------------------
 
-import Control.Lens ((%~), (.~), (^?!))
+import Control.Lens ((%~), (^?!))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as J
 import Data.Aeson.Key qualified as Key
@@ -27,7 +27,7 @@ import Hasura.Prelude hiding ((%~))
 import Hasura.RQL.DDL.RemoteRelationship
   ( CreateFromSourceRelationship,
   )
-import Hasura.RQL.Types.BackendType (BackendType (BigQuery, MSSQL, Postgres), PostgresKind (Vanilla))
+import Hasura.RQL.Types.BackendType (BackendType (..), PostgresKind (..))
 import Hasura.RQL.Types.Metadata (Metadata)
 import Hasura.Server.API.Metadata (RQLMetadataV1)
 import Hasura.Server.API.Query qualified as V1 (RQLQuery)
@@ -71,22 +71,6 @@ spec_roundtrip = describe "JSON Roundtrip" do
       $ do
         let argument = mk_pg_remote_relationship_old_argument "create" ^?! key "args"
         cfsr :: (CreateFromSourceRelationship ('Postgres 'Vanilla)) <-
-          evalAesonResult $ J.fromJSON argument
-        trippingJSON cfsr
-
-    it "'mssql_create_remote_relationship' query"
-      $ hedgehog
-      $ do
-        let argument = mk_mssql_remote_relationship_argument "create" ^?! key "args"
-        cfsr :: (CreateFromSourceRelationship 'MSSQL) <-
-          evalAesonResult $ J.fromJSON argument
-        trippingJSON cfsr
-
-    it "'bigquery_create_remote_relationship' query"
-      $ hedgehog
-      $ do
-        let argument = mk_bigquery_remote_relationship_argument "create" ^?! key "args"
-        cfsr :: (CreateFromSourceRelationship 'BigQuery) <-
           evalAesonResult $ J.fromJSON argument
         trippingJSON cfsr
 
@@ -170,18 +154,6 @@ spec_RQLMetadataV1_examples = describe "RQLMetadataV1" do
       it ("parses a 'pg_" <> T.unpack action <> "_remote_relationship query using the 'old' schema") do
         decodesJSON @RQLMetadataV1 $ mk_pg_remote_relationship_old_argument action
 
-    for_ ["create", "update", "delete"] \action ->
-      it ("parses a 'citus_" <> T.unpack action <> "_remote_relationship query") do
-        decodesJSON @RQLMetadataV1 $ mk_citus_remote_relationship_argument action
-
-    for_ ["create", "update", "delete"] \action ->
-      it ("parses a 'bigquery_" <> T.unpack action <> "_remote_relationship query") do
-        decodesJSON @RQLMetadataV1 $ mk_bigquery_remote_relationship_argument action
-
-    for_ ["create", "update", "delete"] \action ->
-      it ("parses a 'mssql_" <> T.unpack action <> "_remote_relationship query") do
-        decodesJSON @RQLMetadataV1 $ mk_mssql_remote_relationship_argument action
-
   describe "Failure" do
     for_ ["create", "update"] \action ->
       it ("fails to parse a 'pg_" <> T.unpack action <> "_remote_relationship query using the 'old+new' schema") do
@@ -252,11 +224,6 @@ sources:
 
 -- | Backend-agnostic @v1/metadata@ argument fragment which omits the @type@
 -- field.
---
--- This should be used to construct backend-specific fragments by adding the
--- correct type and/or modifying any of the fields specified here as needed.
---
--- See 'mk_backend_remote_relationship_argument for example usage.
 backend_create_remote_relationship_fragment :: J.Value
 backend_create_remote_relationship_fragment =
   [yamlQQ|
@@ -277,8 +244,6 @@ args:
 
 -- | Constructor for @v1/metadata@ @<backend>_(create|update|delete)_remote_relationship@
 -- arguments using the new, unified schema.
---
--- See 'mk_pg_backend_remote_relationship_argument for example usage.
 mk_backend_remote_relationship_argument :: Text -> Text -> J.Value
 mk_backend_remote_relationship_argument backend action =
   backend_create_remote_relationship_fragment
@@ -287,40 +252,11 @@ mk_backend_remote_relationship_argument backend action =
       (Key.fromText "type")
       (J.String $ backend <> "_" <> action <> "_remote_relationship")
 
--- | Constructor for @v1/metadata@ @mssql_(create|update|delete)_remote_relationship@
--- arguments using the new, unified schema.
-mk_mssql_remote_relationship_argument :: Text -> J.Value
-mk_mssql_remote_relationship_argument action =
-  mk_backend_remote_relationship_argument "mssql" action
-
--- | Constructor for @v1/metadata@ @citus_(create|update|delete)_remote_relationship@
--- arguments using the new, unified schema.
-mk_citus_remote_relationship_argument :: Text -> J.Value
-mk_citus_remote_relationship_argument action =
-  mk_backend_remote_relationship_argument "citus" action
-
 -- | Constructor for @v1/metadata@ @pg_(create|update|delete)_remote_relationship@
 -- arguments using the new, unified schema.
 mk_pg_remote_relationship_argument :: Text -> J.Value
 mk_pg_remote_relationship_argument action =
   mk_backend_remote_relationship_argument "pg" action
-
--- | Constructor for @v1/metadata@ @bigquery_(create|update|delete)_remote_relationship@
--- arguments using the new, unified schema.
---
--- NOTE: The 'BigQuery' backend expects its @table@ argument to be of type
--- 'J.Object' (all of the other backends support 'J.String').
-mk_bigquery_remote_relationship_argument :: Text -> J.Value
-mk_bigquery_remote_relationship_argument action =
-  mk_backend_remote_relationship_argument "bigquery" action
-    & key "args"
-    . key "table"
-    .~ J.Object
-      ( KM.fromList
-          [ ("name", "profiles"),
-            ("dataset", "test")
-          ]
-      )
 
 -- | Constructor for @v1/metadata@ @pg_(create|update|delete)_remote_relationship@
 -- arguments using the old, non-unified schema.
@@ -375,9 +311,6 @@ args:
 
 -------------------------------------------------------------------------------
 -- Utility functions.
---
--- NOTE(jkachmar): These are probably generally useful, and should be moved out
--- to some sort of test prelude.
 
 -- | Fails the test if the 'J.Result' is 'J.Error', otherwise returns
 -- the value in 'J.Success'.
@@ -392,9 +325,6 @@ evalAesonResult x = evalEither $ case x of
 
 -- | Test that the 'J.toJSON' / 'J.fromJSON' and 'J.encode' /
 -- 'J.decode' functions are compatible with one another (respectively).
---
--- This is principally useful for validating manually implemented 'toEncoding'
--- methods (typically used to improve serialization performance).
 trippingJSON ::
   forall a m.
   (FromJSON a, ToJSON a, Eq a, Show a, MonadTest m) =>
@@ -404,11 +334,7 @@ trippingJSON x = do
   trippingJSONValue x
   trippingJSONEncoding x
 
--- | Test that 'J.toJSON' / 'J.fromJSON' functions are compatible for a
--- given value.
---
--- This verifies that the 'parseJSON' and 'toJSON' instances agree with one
--- another.
+-- | Test that 'J.toJSON' / 'J.fromJSON' functions are compatible for a given value.
 trippingJSONValue ::
   forall a m.
   (FromJSON a, ToJSON a, Eq a, Show a, MonadTest m) =>
@@ -416,11 +342,7 @@ trippingJSONValue ::
   m ()
 trippingJSONValue x = tripping x J.toJSON J.fromJSON
 
--- | Test that 'J.encode' / 'J.decode' functions are compatible for a
--- given value.
---
--- This verifies that the 'parseJSON' and 'toEncoding' instances agree with one
--- another.
+-- | Test that 'J.encode' / 'J.decode' functions are compatible for a given value.
 trippingJSONEncoding ::
   forall a m.
   (FromJSON a, ToJSON a, Eq a, Show a, MonadTest m) =>

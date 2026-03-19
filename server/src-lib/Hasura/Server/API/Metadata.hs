@@ -34,7 +34,6 @@ import Hasura.RQL.DDL.ApiLimit
 import Hasura.RQL.DDL.ComputedField
 import Hasura.RQL.DDL.ConnectionTemplate
 import Hasura.RQL.DDL.CustomTypes
-import Hasura.RQL.DDL.DataConnector
 import Hasura.RQL.DDL.Endpoint
 import Hasura.RQL.DDL.EventTrigger
 import Hasura.RQL.DDL.GraphqlSchemaIntrospection
@@ -524,8 +523,8 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMUpdateScopeOfCollectionInAllowlist q -> runUpdateScopeOfCollectionInAllowlist q
   RMCreateRestEndpoint q -> runCreateEndpoint q
   RMDropRestEndpoint q -> runDropEndpoint q
-  RMDCAddAgent q -> runAddDataConnectorAgent env q
-  RMDCDeleteAgent q -> runDeleteDataConnectorAgent q
+  RMDCAddAgent _ -> throw400 NotSupported "DataConnector agents are not supported (backend removed)"
+  RMDCDeleteAgent _ -> throw400 NotSupported "DataConnector agents are not supported (backend removed)"
   RMSetCustomTypes q -> runSetCustomTypes q
   RMSetApiLimits q -> runSetApiLimits q
   RMRemoveApiLimits -> runRemoveApiLimits

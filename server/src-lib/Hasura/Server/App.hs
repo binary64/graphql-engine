@@ -57,8 +57,6 @@ import Hasura.App.State
 import Hasura.Authentication.Headers
 import Hasura.Authentication.Role (adminRoleName, roleNameToTxt)
 import Hasura.Authentication.User (ExtraUserInfo (..), UserInfo (..), UserInfoM, askUserInfo)
-import Hasura.Backends.DataConnector.API (openApiSchema)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Backends.Postgres.Execute.Types
 import Hasura.Base.Error
 import Hasura.CredentialCache
@@ -1137,14 +1135,6 @@ httpApp setupHook appStateRef AppEnv {..} consoleType ekgStore closeWebsocketsOn
         appCtx <- liftIO $ getAppContext appStateRef
         respJ <- liftIO $ ES.dumpSubscriptionsState True (acLiveQueryOptions appCtx) (acStreamQueryOptions appCtx) appEnvSubscriptionState
         return (emptyHttpLogGraphQLInfo, JSONResp $ HttpResponse (encJFromJValue respJ) [])
-
-  Spock.get "dev/dataconnector/schema" $ do
-    onlyWhenApiEnabled isDeveloperAPIEnabled appStateRef
-      $ mkSpockAction appStateRef encodeQErr id
-      $ mkGetHandler
-      $ do
-        onlyAdmin
-        return (emptyHttpLogGraphQLInfo, JSONResp $ HttpResponse (encJFromJValue openApiSchema) [])
 
   Spock.get "api/swagger/json"
     $ mkSpockAction appStateRef encodeQErr id

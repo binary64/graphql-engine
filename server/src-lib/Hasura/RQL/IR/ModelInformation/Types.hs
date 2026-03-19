@@ -39,12 +39,10 @@ instance ToJSON ModelType where
 
 data ModelSourceType
   = ModelSourceTypePostgres
-  | ModelSourceTypeDataConnector
   deriving stock (Generic, Show, Eq)
 
 instance ToTxt ModelSourceType where
   toTxt ModelSourceTypePostgres = "database_postgres"
-  toTxt ModelSourceTypeDataConnector = "database_data_connector"
 
 instance ToJSON ModelSourceType where
   toJSON = String . toTxt

@@ -117,7 +117,7 @@ invalidateKeys CacheInvalidations {..} InvalidationKeys {..} =
     { _ikMetadata = if ciMetadata then Inc.invalidate _ikMetadata else _ikMetadata,
       _ikRemoteSchemas = foldl' (flip invalidate) _ikRemoteSchemas ciRemoteSchemas,
       _ikSources = foldl' (flip invalidate) _ikSources ciSources,
-      _ikBackends = BackendMap.modify @'DataConnector invalidateDataConnectors _ikBackends
+      _ikBackends = _ikBackends
     }
   where
     invalidate ::
@@ -126,10 +126,6 @@ invalidateKeys CacheInvalidations {..} InvalidationKeys {..} =
       HashMap a Inc.InvalidationKey ->
       HashMap a Inc.InvalidationKey
     invalidate = HashMap.alter $ Just . maybe Inc.initialInvalidationKey Inc.invalidate
-
-    invalidateDataConnectors :: BackendInvalidationKeysWrapper 'DataConnector -> BackendInvalidationKeysWrapper 'DataConnector
-    invalidateDataConnectors (BackendInvalidationKeysWrapper invalidationKeys) =
-      BackendInvalidationKeysWrapper $ foldl' (flip invalidate) invalidationKeys ciDataConnectors
 
 data TableBuildInput b = TableBuildInput
   { _tbiName :: TableName b,

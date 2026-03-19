@@ -6,7 +6,6 @@ where
 import Control.Monad.Trans.Control
 import Data.ByteString qualified as B
 import Hasura.Authentication.User (UserInfo)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Base.Error
 import Hasura.CredentialCache
 import Hasura.EncJSON

@@ -15,7 +15,6 @@ import "some" Data.GADT.Compare
 -- | A singleton-like GADT that associates a tag to each backend.
 data BackendTag (b :: BackendType) where
   PostgresVanillaTag :: BackendTag ('Postgres 'Vanilla)
-  DataConnectorTag :: BackendTag 'DataConnector
 
 -- Derive GEq and GCompare instances for BackendTag.
 -- These are used to write a Select instance for BackendMap.
@@ -31,9 +30,6 @@ instance GEq BackendTag where
 
 instance GCompare BackendTag where
   gcompare PostgresVanillaTag PostgresVanillaTag = GEQ
-  gcompare PostgresVanillaTag _ = GLT
-  gcompare _ PostgresVanillaTag = GGT
-  gcompare DataConnectorTag DataConnectorTag = GEQ
 
 -- | This class describes how to get a tag for a given type.
 -- We use it in AnyBackend: `case backendTag @b of`...
@@ -43,13 +39,9 @@ class HasTag (b :: BackendType) where
 instance HasTag ('Postgres 'Vanilla) where
   backendTag = PostgresVanillaTag
 
-instance HasTag 'DataConnector where
-  backendTag = DataConnectorTag
-
 -- | How to convert back from a tag to a runtime value.
 reify :: BackendTag b -> BackendType
 reify PostgresVanillaTag = Postgres Vanilla
-reify DataConnectorTag = DataConnector
 
 -- | Provides a title-cased name for a database kind, inferring the appropriate
 -- database kind from type context.

@@ -43,7 +43,6 @@ import Data.Aeson.Types
 import Data.HashMap.Strict.Extended qualified as HashMap
 import Data.Text.Extended
 import Hasura.Authentication.Role (RoleName)
-import Hasura.Backends.DataConnector.Adapter.Types (DataConnectorName)
 import Hasura.Base.ErrorMessage
 import Hasura.Base.ToErrorValue
 import Hasura.LogicalModel.Types
@@ -126,7 +125,6 @@ data MetadataObjId
   | MOInheritedRole RoleName
   | MOEndpoint EndpointName
   | MOQueryCollectionsQuery CollectionName ListedQuery
-  | MODataConnectorAgent DataConnectorName
   | MOOpenTelemetry OpenTelemetryConfigSubobject
   deriving (Show, Eq, Ord, Generic)
 
@@ -151,7 +149,6 @@ moiTypeName = \case
   MOInheritedRole _ -> "inherited_role"
   MOEndpoint _ -> "rest_endpoint"
   MOQueryCollectionsQuery _ _ -> "query_collections"
-  MODataConnectorAgent _ -> "data_connector_agent"
   MOOpenTelemetry _ -> "open_telemetry"
   where
     handleSourceObj :: forall b. SourceMetadataObjId b -> Text
@@ -196,7 +193,6 @@ moiName objectId =
     MOInheritedRole inheritedRoleName -> "inherited role " <> toTxt inheritedRoleName
     MOEndpoint name -> toTxt name
     MOQueryCollectionsQuery cName lq -> (toTxt . _lqName) lq <> " in " <> toTxt cName
-    MODataConnectorAgent agentName -> toTxt agentName
     MOOpenTelemetry subobject -> case subobject of
       OtelSubobjectAll -> "all"
       OtelSubobjectExporterOtlp -> "exporter_otlp"

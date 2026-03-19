@@ -398,40 +398,25 @@ runGetSourceTables GetSourceTables {..} = do
 
 --------------------------------------------------------------------------------
 
+-- | GetTableInfo_ was a legacy DataConnector command. DataConnector has been removed.
 data GetTableInfo_ = GetTableInfo_
-  { _gtiSourceName_ :: Common.SourceName,
-    _gtiTableName_ :: TableName 'DataConnector
+  { _gtiSourceName_ :: Common.SourceName
   }
 
 instance FromJSON GetTableInfo_ where
   parseJSON = J.withObject "GetTableInfo_" \o -> do
     _gtiSourceName_ <- o .: "source"
-    _gtiTableName_ <- o .: "table"
     pure $ GetTableInfo_ {..}
 
--- | Legacy data connector command. This doesn't use the DataConnector
--- 'ScalarType' to represent types.
+-- | Legacy data connector command. DataConnector has been removed; always returns error.
 runGetTableInfo_ ::
   ( CacheRM m,
-    MonadError Error.QErr m,
-    Metadata.MetadataM m,
-    MonadBaseControl IO m,
-    MonadIO m
+    MonadError Error.QErr m
   ) =>
   GetTableInfo_ ->
   m EncJSON
-runGetTableInfo_ GetTableInfo_ {..} = do
-  metadata <- Metadata.getMetadata
-
-  let sources = fmap Metadata.unBackendSourceMetadata $ Metadata._metaSources metadata
-  abSourceMetadata <- lookupSourceMetadata _gtiSourceName_ sources
-
-  AnyBackend.dispatchAnyBackend @RQL.Types.Backend abSourceMetadata $ \Metadata.SourceMetadata {_smKind} -> do
-    case _smKind of
-      Backend.DataConnectorKind _dcName -> do
-        fmap EncJSON.encJFromJValue (getTableInfo @'DataConnector _gtiSourceName_ _gtiTableName_)
-      backend ->
-        Error.throw500 ("Schema fetching is not supported for '" <> Text.E.toTxt backend <> "'")
+runGetTableInfo_ _gti =
+  Error.throw400 Error.NotSupported "GetTableInfo_ is not supported (DataConnector backend removed)"
 
 data GetTableInfo (b :: BackendType) = GetTableInfo
   { _gtiSourceName :: Common.SourceName,
@@ -465,4 +450,4 @@ runGetTableInfo GetTableInfo {..} = do
 lookupSourceMetadata :: (MonadError QErr m) => SourceName -> InsOrdHashMap SourceName (AnyBackend SourceMetadata) -> m (AnyBackend SourceMetadata)
 lookupSourceMetadata sourceName sources =
   InsOrdHashMap.lookup sourceName sources
-    `onNothing` Error.throw400 Error.DataConnectorError ("Source '" <> Text.E.toTxt sourceName <> "' not found")
+    `onNothing` Error.throw400 Error.NotExists ("Source '" <> Text.E.toTxt sourceName <> "' not found")

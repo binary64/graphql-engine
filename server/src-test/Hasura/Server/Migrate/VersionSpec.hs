@@ -2,7 +2,7 @@ module Hasura.Server.Migrate.VersionSpec (spec) where
 
 import Data.Either (isLeft)
 import Hasura.Prelude
-import Hasura.RQL.Types.BackendType (BackendType (MSSQL))
+import Hasura.RQL.Types.BackendType (BackendType (..), PostgresKind (..))
 import Hasura.Server.Migrate.Version (MetadataCatalogVersion (..))
 import Hasura.Server.Migrate.Version qualified as Version
 import Hedgehog.Gen qualified as Gen
@@ -12,7 +12,7 @@ import Test.Hspec.Hedgehog
 
 -- 'SourceCatalogVersion' is parameterized by a phantom backend type.
 -- The backend type is irrelevant; this is an arbitrary choice.
-type SourceCatalogVersion = Version.SourceCatalogVersion 'MSSQL
+type SourceCatalogVersion = Version.SourceCatalogVersion ('Postgres 'Vanilla)
 
 spec :: Spec
 spec = do

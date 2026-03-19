@@ -9,7 +9,6 @@ module Hasura.Server.API.V2Query
 where
 
 import Control.Concurrent.Async.Lifted (mapConcurrently)
-import Control.Lens (preview, _Right)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
@@ -17,8 +16,6 @@ import Data.Text qualified as T
 import GHC.Generics.Extended (constrName)
 import Hasura.App.State
 import Hasura.Authentication.User (UserInfoM)
-import Hasura.Backends.DataConnector.Adapter.RunSQL qualified as DataConnector
-import Hasura.Backends.DataConnector.Adapter.Types (DataConnectorName, mkDataConnectorName)
 import Hasura.Backends.Postgres.DDL.RunSQL qualified as Postgres
 import Hasura.Base.Error
 import Hasura.EncJSON
@@ -48,7 +45,6 @@ import Hasura.RQL.Types.Source
 import Hasura.Server.Types
 import Hasura.Services
 import Hasura.Tracing qualified as Tracing
-import Language.GraphQL.Draft.Syntax qualified as GQL
 
 data RQLQuery
   = RQInsert !InsertQuery
@@ -57,7 +53,6 @@ data RQLQuery
   | RQDelete !DeleteQuery
   | RQCount !CountQuery
   | RQRunSql !Postgres.RunSQL
-  | RQDataConnectorRunSql !DataConnectorName !DataConnector.DataConnectorRunSQL
   | RQBulk ![RQLQuery]
   | -- | A variant of 'RQBulk' that runs a bulk of read-only queries concurrently.
     --   Asserts that queries on this lists are not modifying the schema.
@@ -72,7 +67,6 @@ instance FromJSON RQLQuery where
     t <- o .: "type"
     let args :: forall a. (FromJSON a) => Parser a
         args = o .: "args"
-        dcNameFromRunSql = T.stripSuffix "_run_sql" >=> GQL.mkName >=> preview _Right . mkDataConnectorName
     case t of
       "insert" -> RQInsert <$> args
       "select" -> RQSelect <$> args
@@ -83,7 +77,6 @@ instance FromJSON RQLQuery where
       -- string interpolation easier in the cross-backend tests.
       "run_sql" -> RQRunSql <$> args
       "pg_run_sql" -> RQRunSql <$> args
-      (dcNameFromRunSql -> Just t') -> RQDataConnectorRunSql t' <$> args
       "bulk" -> RQBulk <$> args
       "concurrent_bulk" -> RQConcurrentBulk <$> args
       _ -> fail $ "Unrecognised RQLQuery type: " <> T.unpack t
@@ -148,7 +141,6 @@ queryModifiesSchema = \case
   RQDelete _ -> False
   RQCount _ -> False
   RQRunSql q -> Postgres.isSchemaCacheBuildRequiredRunSQL q
-  RQDataConnectorRunSql _ _ -> False
   RQBulk l -> any queryModifiesSchema l
   RQConcurrentBulk l -> any queryModifiesSchema l
 
@@ -172,7 +164,6 @@ runQueryM sqlGen rq = Tracing.newSpan (T.pack $ constrName rq) Tracing.SKInterna
   RQDelete q -> runDelete sqlGen q
   RQCount q -> runCount q
   RQRunSql q -> Postgres.runRunSQL @'Vanilla sqlGen q
-  RQDataConnectorRunSql t q -> DataConnector.runSQL t q
   RQBulk l -> encJFromList <$> indexedMapM (runQueryM sqlGen) l
   RQConcurrentBulk l -> do
     when (queryModifiesSchema rq)
@@ -187,6 +178,5 @@ queryModifiesUserDB = \case
   RQDelete _ -> True
   RQCount _ -> False
   RQRunSql runsql -> not (Postgres.isReadOnly runsql)
-  RQDataConnectorRunSql _ _ -> True
   RQBulk q -> any queryModifiesUserDB q
   RQConcurrentBulk _ -> False
