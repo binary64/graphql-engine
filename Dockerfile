@@ -1,6 +1,6 @@
 # Multi-stage build for Hasura GraphQL Engine (memory-optimized fork)
 # Stage 1: Build with GHC 9.10
-FROM haskell:9.10.3-slim-bookworm AS builder
+FROM haskell:9.10.2-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
@@ -54,14 +54,7 @@ CABALEOF
 # Copy everything else
 COPY . .
 
-# Keep freeze file for third-party dependency pinning.
-# Remove all GHC boot/bundled package pins (they ship with GHC and can't be overridden).
-# Replace pinned versions with unconstrained ranges to preserve file syntax.
-RUN ghc-pkg list --simple-output | tr ' ' '\n' | sed 's/-[0-9].*//' | sort -u > /tmp/boot-pkgs.txt \
-    && while read pkg; do \
-         sed -i "s/any\.${pkg} ==[^,]*/any.${pkg} >=0/" cabal.project.freeze; \
-       done < /tmp/boot-pkgs.txt \
-    && rm /tmp/boot-pkgs.txt
+# Freeze file matches GHC 9.10.2 — no modifications needed
 
 # Remove test packages that depend on dc-agents (excluded from Docker context via .dockerignore)
 RUN rm -rf server/lib/api-tests server/lib/test-harness server/lib/upgrade-tests
