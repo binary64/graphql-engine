@@ -54,7 +54,8 @@ CABALEOF
 # Copy everything else
 COPY . .
 
-# Freeze file matches GHC 9.10.2 — no modifications needed
+# Fix compiler path: cabal.project specifies ghc-9.10.3 but we have 9.10.2
+RUN sed -i 's/ghc-9.10.3/ghc/' cabal.project cabal/dev-sh.project
 
 # Remove test packages that depend on dc-agents (excluded from Docker context via .dockerignore)
 RUN rm -rf server/lib/api-tests server/lib/test-harness server/lib/upgrade-tests
