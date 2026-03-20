@@ -110,16 +110,6 @@ extra-source-files:
   src-rsr/migrations/7_to_8.sql
   src-rsr/migrations/8_to_9.sql
   src-rsr/migrations/9_to_10.sql
-  src-rsr/mssql/drop_mssql_source.sql
-  src-rsr/mssql/init_mssql_source.sql
-  src-rsr/mssql/mssql_delete_trigger.sql.shakespeare
-  src-rsr/mssql/mssql_fetch_events.sql.shakespeare
-  src-rsr/mssql/mssql_insert_trigger.sql.shakespeare
-  src-rsr/mssql/mssql_source_migrations/1_to_2.sql
-  src-rsr/mssql/mssql_source_migrations/2_to_3.sql
-  src-rsr/mssql/mssql_table_metadata.sql
-  src-rsr/mssql/mssql_unlock_events.sql.shakespeare
-  src-rsr/mssql/mssql_update_trigger.sql.shakespeare
   src-rsr/pg_function_metadata.sql
   src-rsr/pg_source_migrations/0_to_1.sql
   src-rsr/pg_source_migrations/1_to_2.sql
@@ -468,11 +458,8 @@ common lib-depends
                      -- needed for deriving via
                      , semigroups >= 0.19
 
-                     -- mssql support
-                     , odbc
                      , resource-pool
 
-                     -- bigquery support
                      , memory
                      , crypton-x509-store
                      , crypton-connection
@@ -501,8 +488,6 @@ library
                      , Control.Monad.Trans.Managed
                      , Data.Aeson.Kriti.Functions
                      , Data.SqlCommenter
-                     , Database.MSSQL.Transaction
-                     , Database.MSSQL.Pool
 
                      , Hasura.App
                      , Hasura.Metadata.Class
@@ -1171,19 +1156,6 @@ test-suite graphql-engine-tests
     Test.QuickCheck.Extended
     Test.SIString
 
-test-suite graphql-engine-test-mssql
-  import: common-all, common-exe, lib-depends
-  build-tool-depends: hspec-discover:hspec-discover
-  type: exitcode-stdio-1.0
-  build-depends:
-      graphql-engine
-    , hspec
-    , odbc
-  hs-source-dirs: test-mssql
-  main-is: Main.hs
-  other-modules:
-    Database.MSSQL.TransactionSpec
-    SpecHook
 
 test-suite graphql-engine-test-postgres
   import: common-all, common-exe, lib-depends

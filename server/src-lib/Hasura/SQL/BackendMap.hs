@@ -31,7 +31,7 @@ import Hasura.Incremental.Internal.Dependency (Dependency (..), selectD)
 import Hasura.Incremental.Select
 import Hasura.Prelude hiding (empty, lookup, modify)
 import Hasura.RQL.Types.BackendTag (BackendTag, HasTag, backendTag, reify)
-import Hasura.RQL.Types.BackendType (BackendType (..), supportedBackends)
+import Hasura.RQL.Types.BackendType (BackendType (..), PostgresKind (..), supportedBackends)
 import Hasura.SQL.AnyBackend
 
 --------------------------------------------------------------------------------

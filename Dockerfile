@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     zlib1g-dev \
     libgmp-dev \
-    unixodbc-dev \
     curl \
     git \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -79,7 +78,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libc6 \
     ca-certificates \
     curl \
-    unixodbc \
     libstdc++6 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
