@@ -54,9 +54,14 @@ CABALEOF
 # Copy everything else
 COPY . .
 
-# Keep freeze file for dependency pinning but remove GHC boot library pins
-# (freeze was made for GHC 9.10.2; 9.10.3 ships newer base, ghc-internal, etc.)
-RUN sed -i '/any\.base ==\|any\.ghc-internal ==\|any\.ghc-bignum ==\|any\.ghc-prim ==\|any\.ghc-boot ==\|any\.ghc-boot-th ==\|any\.ghc-heap ==\|any\.rts ==\|any\.template-haskell ==\|any\.ghc-lib/d' cabal.project.freeze
+# Keep freeze file for third-party dependency pinning.
+# Remove all GHC boot/bundled package pins (they ship with GHC and can't be overridden).
+# Detect installed packages from GHC and strip their freeze constraints.
+RUN ghc-pkg list --simple-output | tr ' ' '\n' | sed 's/-[0-9].*//' | sort -u > /tmp/boot-pkgs.txt \
+    && while read pkg; do \
+         sed -i "/any\.${pkg} ==/d" cabal.project.freeze; \
+       done < /tmp/boot-pkgs.txt \
+    && rm /tmp/boot-pkgs.txt
 
 # Remove test packages that depend on dc-agents (excluded from Docker context via .dockerignore)
 RUN rm -rf server/lib/api-tests server/lib/test-harness server/lib/upgrade-tests
