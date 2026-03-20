@@ -43,6 +43,9 @@ package hasql-pool
 -- Allow newer hashtables
 allow-newer: hashtables
 
+-- Pin text-builder to 0.6.x (1.0 renamed Text.Builder → TextBuilder, breaking graphql-parser)
+constraints: text-builder <1
+
 -- Production: no debug, no coverage, no -Werror
 package graphql-engine
   coverage: false
