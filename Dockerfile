@@ -40,11 +40,8 @@ package Spock
 package hasql-pool
   library-vanilla: True
 
--- Allow newer hashtables
-allow-newer: hashtables
-
--- Pin text-builder to 0.6.x (1.0 renamed Text.Builder → TextBuilder, breaking graphql-parser)
-constraints: text-builder <1
+-- Allow newer hashtables and base (GHC 9.10.3 vs 9.10.2 freeze)
+allow-newer: hashtables, base
 
 -- Production: no debug, no coverage, no -Werror
 package graphql-engine
@@ -57,8 +54,9 @@ CABALEOF
 # Copy everything else
 COPY . .
 
-# Remove freeze file — it's pinned to GHC 9.10.2's base, incompatible with 9.10.3
-RUN rm -f cabal.project.freeze
+# Keep freeze file for dependency pinning but relax base version constraint
+# (freeze pins base==4.20.1.0 for GHC 9.10.2; GHC 9.10.3 may ship a newer base)
+RUN sed -i 's/any.base ==4.20.1.0/any.base >=4.20.1.0/' cabal.project.freeze
 
 # Remove test packages that depend on dc-agents (excluded from Docker context via .dockerignore)
 RUN rm -rf server/lib/api-tests server/lib/test-harness server/lib/upgrade-tests
