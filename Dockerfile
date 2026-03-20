@@ -1,6 +1,6 @@
 # Multi-stage build for Hasura GraphQL Engine (memory-optimized fork)
 # Stage 1: Build with GHC 9.10
-FROM haskell:9.10.2-slim-bookworm AS builder
+FROM haskell:9.10.2-slim-bullseye AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
