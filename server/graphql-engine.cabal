@@ -268,7 +268,6 @@ common lib-depends
                      , autodocodec-openapi3
                      , barbies
                      , base
-                     , ghc-debug-stub
                      , bytestring
                      , containers
                      , data-default
@@ -286,7 +285,6 @@ common lib-depends
                      , hasura-extras
                      , hasura-json-encoding
                      , hasura-prelude
-                     , http-client-tls
                      , http-conduit
                      , http-media
                      , http-types
@@ -353,7 +351,6 @@ common lib-depends
 
                      -- Logging related
                      , network
-                     , network-bsd
                      , byteorder
 
                      -- for parsing RSA keys
@@ -469,7 +466,6 @@ common lib-depends
                      , crypton-x509-system
                      , tagged
                       -- dependency of vendored 'ip':
-                     , wide-word
 
                      -- debounce logs
                      , fold-debounce
@@ -960,7 +956,6 @@ executable graphql-engine
   build-depends:     aeson
                    , base
                    , graphql-engine
-                   , ghc-debug-stub
                    , bytestring
                    , ekg-core
                    , ekg-prometheus
@@ -1023,7 +1018,6 @@ test-suite graphql-engine-tests
     , hspec-expectations-lifted
     , hspec-hedgehog
     , http-client
-    , http-client-tls
     , http-types
     , HUnit
     , immortal
