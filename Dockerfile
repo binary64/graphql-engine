@@ -56,10 +56,10 @@ COPY . .
 
 # Keep freeze file for third-party dependency pinning.
 # Remove all GHC boot/bundled package pins (they ship with GHC and can't be overridden).
-# Detect installed packages from GHC and strip their freeze constraints.
+# Replace pinned versions with unconstrained ranges to preserve file syntax.
 RUN ghc-pkg list --simple-output | tr ' ' '\n' | sed 's/-[0-9].*//' | sort -u > /tmp/boot-pkgs.txt \
     && while read pkg; do \
-         sed -i "/any\.${pkg} ==/d" cabal.project.freeze; \
+         sed -i "s/any\.${pkg} ==[^,]*/any.${pkg} >=0/" cabal.project.freeze; \
        done < /tmp/boot-pkgs.txt \
     && rm /tmp/boot-pkgs.txt
 
