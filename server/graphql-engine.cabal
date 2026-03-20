@@ -703,6 +703,7 @@ library
                      , Hasura.RemoteSchema.SchemaCache.Permission
                      , Hasura.RemoteSchema.SchemaCache.RemoteRelationship
                      , Hasura.RemoteSchema.SchemaCache.Build
+                     , Hasura.RemoteSchema.SchemaCache.LocalIntrospection
                      , Hasura.RemoteSchema.SchemaCache
 
                      , Hasura.RQL.Types.Action

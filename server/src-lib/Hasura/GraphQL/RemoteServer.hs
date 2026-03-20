@@ -40,7 +40,10 @@ import Hasura.RQL.DDL.Headers (makeHeadersFromConf)
 import Hasura.RQL.Types.Common
 import Hasura.RQL.Types.Schema.Options qualified as Options
 import Hasura.RemoteSchema.Metadata
+import Hasura.RemoteSchema.Metadata.Base (RemoteSchemaName (..))
+import Hasura.RemoteSchema.SchemaCache.LocalIntrospection (localIntrospectionDir)
 import Hasura.RemoteSchema.SchemaCache.Types
+import Data.Text.NonEmpty (unNonEmptyText)
 import Hasura.Services.Network
 import Hasura.Tracing qualified as Tracing
 import Language.GraphQL.Draft.Parser qualified as G
@@ -53,9 +56,11 @@ import Network.Wreq qualified as Wreq
 -------------------------------------------------------------------------------
 -- Core API
 
--- | Make an introspection query to the remote graphql server for the data we
--- need to present and stitch the remote schema. This powers add_remote_schema,
--- and also is called by schema cache rebuilding code in "Hasura.RQL.DDL.Schema.Cache".
+-- | Load remote schema introspection from a local file.
+--
+-- Reads from @/etc/hasura/introspection/<schema-name>.json@.
+-- No HTTP calls. If the file doesn't exist, throws an error.
+-- The result is parsed once and held in memory forever.
 fetchRemoteSchema ::
   forall m.
   (MonadIO m, MonadError QErr m, Tracing.MonadTrace m, ProvidesNetwork m) =>
@@ -63,14 +68,18 @@ fetchRemoteSchema ::
   SchemaSampledFeatureFlags ->
   ValidatedRemoteSchemaDef ->
   m (IntrospectionResult, BL.ByteString, RemoteSchemaInfo)
-fetchRemoteSchema env schemaSampledFeatureFlags rsDef = do
-  (_, _, rawIntrospectionResult) <-
-    execRemoteGQ env Tracing.b3TraceContextPropagator adminUserInfo [] rsDef introspectionQuery
+fetchRemoteSchema _env schemaSampledFeatureFlags rsDef = do
+  let schemaName = _vrsdName rsDef
+      nameText = unNonEmptyText (unRemoteSchemaName schemaName)
+      localPath = localIntrospectionDir </> T.unpack nameText <> ".json"
+  rawIntrospectionResult <-
+    liftIO (try @SomeException $ BL.readFile localPath) >>= \case
+      Right bytes -> pure bytes
+      Left err ->
+        throw400 RemoteSchemaError $
+          "Remote schema " <> nameText <> ": no introspection file at " <> T.pack localPath
+            <> " (" <> tshow err <> ")"
   (ir, rsi) <- stitchRemoteSchema schemaSampledFeatureFlags rawIntrospectionResult rsDef
-  -- The 'rawIntrospectionResult' contains the 'Bytestring' response of
-  -- the introspection result of the remote server. We store this in the
-  -- 'RemoteSchemaCtx' because we can use this when the 'introspect_remote_schema'
-  -- is called by simple encoding the result to JSON.
   pure (ir, rawIntrospectionResult, rsi)
 
 -- | Parses the remote schema introspection result, and check whether it looks
