@@ -23,16 +23,15 @@ COPY cabal/dev-sh.project.local cabal/dev-sh.project.local
 COPY server/graphql-engine.cabal server/graphql-engine.cabal
 COPY server/lib/ server/lib/
 
-# Create a production cabal.project.local
+# Create a production cabal.project.local (standalone — do NOT import dev-sh.project.local
+# which sets -Werror globally and causes -Wunused-packages failures on third-party libs)
 RUN cat > cabal.project.local << 'CABALEOF'
-import: cabal/dev-sh.project.local
-
 -- Static Haskell libs, dynamic C libs only
 executable-dynamic: False
 library-vanilla: True
 
 package *
-  ghc-options: -j1 +RTS -A64m -n2m -M6500m -RTS -Wno-error=unused-packages
+  ghc-options: -j1 +RTS -A64m -n2m -M6500m -RTS
 
 package hedis
   library-vanilla: True
@@ -44,7 +43,7 @@ package hasql-pool
 -- Allow newer hashtables
 allow-newer: hashtables
 
--- Production: no debug, no coverage
+-- Production: no debug, no coverage, no -Werror
 package graphql-engine
   coverage: false
   ghc-options: -O1
