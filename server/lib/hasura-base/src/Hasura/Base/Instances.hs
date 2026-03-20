@@ -17,7 +17,6 @@ import Data.Text.Encoding.Error (lenientDecode)
 import Data.Text.Extended (ToTxt (toTxt))
 import Data.Time (NominalDiffTime)
 import Data.URL.Template qualified as UT
-import Database.ODBC.SQLServer qualified as ODBC
 import Database.PG.Query qualified as PG
 import Hasura.Prelude
 import Kriti qualified
@@ -120,10 +119,6 @@ instance J.ToJSON ByteString where
   toJSON = J.String . decodeUtf8With lenientDecode
 
 --------------------------------------------------------------------------------
--- ODBC
-
-instance ToTxt ODBC.Query where
-  toTxt = ODBC.renderQuery
 
 --------------------------------------------------------------------------------
 -- Postgres

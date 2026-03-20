@@ -55,7 +55,6 @@ library
     , http-types
     , kriti-lang
     , lens
-    , odbc
     , openapi3
     , pg-client
     , regex-tdfa
