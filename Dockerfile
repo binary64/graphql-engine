@@ -63,7 +63,9 @@ RUN rm -rf server/lib/api-tests server/lib/test-harness server/lib/upgrade-tests
 RUN cabal update \
     && cabal build graphql-engine --only-dependencies -j2 \
     && cabal build graphql-engine -j1 \
-    && cp $(cabal list-bin graphql-engine) /build/graphql-engine-bin \
+    && BIN=$(cabal list-bin graphql-engine 2>/dev/null || find /build/dist-newstyle -name 'graphql-engine' -type f -perm /111 | grep -v '.so' | head -1) \
+    && echo "Binary at: $BIN" \
+    && cp "$BIN" /build/graphql-engine-bin \
     && strip /build/graphql-engine-bin
 
 # Stage 2: Runtime image
