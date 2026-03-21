@@ -323,8 +323,7 @@ deleteMetadataObject = \case
   MOAction name -> boActions %~ HashMap.delete name
   MOActionPermission name role -> boActions . ix name . aiPermissions %~ HashMap.delete role
   MOInheritedRole name -> boRoles %~ HashMap.delete name
-  MODataConnectorAgent _agentName ->
-    id -- DataConnector removed; no-op
+
   -- These parts of Metadata never become inconsistent as a result of
   -- inconsistencies elsewhere, i.e. they don't have metadata dependencies.  So
   -- we never need to prune them, and in fact don't even bother storing them in
