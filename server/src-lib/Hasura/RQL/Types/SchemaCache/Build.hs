@@ -220,7 +220,7 @@ data CacheInvalidations = CacheInvalidations
     ciRemoteSchemas :: HashSet RemoteSchemaName,
     -- | Force re-establishing connections of the given data sources, even if their configuration has not changed. Set
     -- by the @pg_reload_source@ API.
-    ciSources :: HashSet SourceName,
+    ciSources :: HashSet SourceName
   }
   deriving stock (Generic)
 
