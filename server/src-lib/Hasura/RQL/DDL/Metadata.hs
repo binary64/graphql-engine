@@ -712,8 +712,6 @@ purgeMetadataObj = \case
   MOEndpoint epName -> dropEndpointInMetadata epName
   MOInheritedRole role -> dropInheritedRoleInMetadata role
   MOQueryCollectionsQuery cName lq -> dropListedQueryFromQueryCollections cName lq
-  MODataConnectorAgent _agentName ->
-    mempty -- DataConnector removed; no-op
   MOOpenTelemetry subobject ->
     case subobject of
       OtelSubobjectAll ->
