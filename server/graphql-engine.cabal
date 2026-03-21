@@ -959,6 +959,7 @@ executable graphql-engine
                    , bytestring
                    , ekg-core
                    , ekg-prometheus
+                   , ghc-debug-stub
                    , hasura-extras
                    , hasura-prelude
                    , kan-extensions
