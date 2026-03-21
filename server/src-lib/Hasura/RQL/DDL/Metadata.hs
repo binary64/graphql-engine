@@ -604,7 +604,7 @@ runExportMetadataV2 currentResourceVersion ExportMetadata {} = do
       ]
 
 runReloadMetadata :: (QErrM m, CacheRWM m, MetadataM m) => ReloadMetadata -> m EncJSON
-runReloadMetadata (ReloadMetadata reloadRemoteSchemas reloadSources reloadRecreateEventTriggers _reloadDataConnectors) = do
+runReloadMetadata (ReloadMetadata reloadRemoteSchemas reloadSources reloadRecreateEventTriggers) = do
   metadata <- getMetadata
   let allSources = HS.fromList $ InsOrdHashMap.keys $ _metaSources metadata
       allRemoteSchemas = HS.fromList $ InsOrdHashMap.keys $ _metaRemoteSchemas metadata
