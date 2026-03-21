@@ -353,7 +353,7 @@ runReplaceMetadataV2' ReplaceMetadataV2 {..} = do
         CacheInvalidations
           { ciMetadata = False,
             ciRemoteSchemas = mempty,
-            ciSources = HS.fromList $ InsOrdHashMap.keys newSources,
+            ciSources = HS.fromList $ InsOrdHashMap.keys newSources
           }
 
   -- put the new metadata in the state managed by the `MetadataT`
