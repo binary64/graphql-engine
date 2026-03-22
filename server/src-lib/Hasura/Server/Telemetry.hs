@@ -165,35 +165,9 @@ runTelemetry ::
   PGVersion ->
   ComputeResourcesResponse ->
   m Void
-runTelemetry (Logger logger) appStateRef metadataDbUid pgVersion computeResources = do
-  State.AppEnv {..} <- State.askAppEnv
-  let options = wreqOptions appEnvManager []
-  forever $ liftIO $ do
-    telemetryStatus <- State.acEnableTelemetry <$> HGE.getAppContext appStateRef
-    case telemetryStatus of
-      TelemetryEnabled -> do
-        schemaCache <- HGE.getSchemaCache appStateRef
-        serviceTimings <- dumpServiceTimingMetrics
-        experimentalFeatures <- State.acExperimentalFeatures <$> HGE.getAppContext appStateRef
-        ci <- CI.getCI
-        -- Creates a telemetry payload for a specific backend.
-        let telemetryForSource :: forall (b :: BackendType). SourceInfo b -> TelemetryPayload
-            telemetryForSource =
-              mkTelemetryPayload
-                metadataDbUid
-                appEnvInstanceId
-                currentVersion
-                pgVersion
-                ci
-                serviceTimings
-                (scRemoteSchemas schemaCache)
-                (scActions schemaCache)
-                experimentalFeatures
-            telemetries =
-              map
-                (\sourceinfo -> (Any.dispatchAnyBackend @HasTag) sourceinfo telemetryForSource)
-                (HashMap.elems (scSources schemaCache))
-            payloads = J.encode <$> telemetries
+runTelemetry (Logger _logger) _appStateRef _metadataDbUid _pgVersion _computeResources = do
+  -- Telemetry disabled in stripped fork
+  liftIO $ forever $ C.sleep $ seconds 86400
 
             serverTelemetry =
               J.encode

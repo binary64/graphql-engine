@@ -2,7 +2,7 @@ name: Docker Build & Push
 
 on:
   push:
-    branches: [memory-fix]
+    branches: [memory-fix, remote-schema-local-file]
   workflow_dispatch:
 
 permissions:
