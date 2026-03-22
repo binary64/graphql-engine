@@ -476,16 +476,16 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMGetEventLogs q -> dispatchEventTrigger runGetEventLogs q
   RMGetEventInvocationLogs q -> dispatchEventTrigger runGetEventInvocationLogs q
   RMGetEventById q -> dispatchEventTrigger runGetEventById q
-  RMAddRemoteSchema q -> runAddRemoteSchema env schemaSampledFeatureFlags q
-  RMUpdateRemoteSchema q -> runUpdateRemoteSchema env schemaSampledFeatureFlags q
-  RMRemoveRemoteSchema q -> runRemoveRemoteSchema q
-  RMReloadRemoteSchema q -> runReloadRemoteSchema q
+  RMAddRemoteSchema _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork. Use HASURA_GRAPHQL_REMOTE_SCHEMA_FILE env var."
+  RMUpdateRemoteSchema _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMRemoveRemoteSchema _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMReloadRemoteSchema _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
   RMIntrospectRemoteSchema q -> runIntrospectRemoteSchema q
-  RMAddRemoteSchemaPermissions q -> runAddRemoteSchemaPermissions remoteSchemaPerms q
-  RMDropRemoteSchemaPermissions q -> runDropRemoteSchemaPermissions q
-  RMCreateRemoteSchemaRemoteRelationship q -> runCreateRemoteSchemaRemoteRelationship q
-  RMUpdateRemoteSchemaRemoteRelationship q -> runUpdateRemoteSchemaRemoteRelationship q
-  RMDeleteRemoteSchemaRemoteRelationship q -> runDeleteRemoteSchemaRemoteRelationship q
+  RMAddRemoteSchemaPermissions _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMDropRemoteSchemaPermissions _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMCreateRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMUpdateRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMDeleteRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
   RMCreateCronTrigger q ->
     validateTransforms
       (unUnvalidate . cctRequestTransform . _Just)
