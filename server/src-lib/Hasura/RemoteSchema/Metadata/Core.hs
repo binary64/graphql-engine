@@ -45,13 +45,12 @@ data RemoteSchemaDef = RemoteSchemaDef
     _rsdHeaders :: Maybe [HeaderConf],
     _rsdForwardClientHeaders :: Bool,
     _rsdTimeoutSeconds :: Maybe Int,
-    _rsdCustomization :: Maybe RemoteSchemaCustomization
-    -- NOTE: In the future we might extend this API to support a small DSL of
-    -- name transformations; this might live at a different layer, and be part of
-    -- the schema customization story.
-    --
-    -- See: https://github.com/hasura/graphql-engine-mono/issues/144
-    -- TODO we probably want to move this into a sub-field "transformations"?
+    _rsdCustomization :: Maybe RemoteSchemaCustomization,
+    -- | Optional path to a local JSON file containing the introspection result.
+    -- When set, Hasura reads the schema from this file at startup instead of
+    -- making an HTTP introspection request. The URL is still required for
+    -- runtime query forwarding.
+    _rsdSchemaFile :: Maybe FilePath
   }
   deriving (Show, Eq, Generic)
 
@@ -73,6 +72,8 @@ instance HasCodec RemoteSchemaDef where
       .= _rsdTimeoutSeconds
         <*> optionalField' "customization"
       .= _rsdCustomization
+        <*> optionalField' "schema_file"
+      .= _rsdSchemaFile
 
 instance J.ToJSON RemoteSchemaDef where
   toJSON = J.genericToJSON hasuraJSON {J.omitNothingFields = True}
@@ -94,6 +95,8 @@ instance J.FromJSON RemoteSchemaDef where
       J..:? "timeout_seconds"
       <*> o
       J..:? "customization"
+      <*> o
+      J..:? "schema_file"
 
 getUrlFromEnv :: (MonadError QErr m) => Env.Environment -> Text -> m (EnvRecord N.URI)
 getUrlFromEnv env urlFromEnv = do

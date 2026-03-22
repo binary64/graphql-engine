@@ -64,8 +64,16 @@ fetchRemoteSchema ::
   ValidatedRemoteSchemaDef ->
   m (IntrospectionResult, BL.ByteString, RemoteSchemaInfo)
 fetchRemoteSchema env schemaSampledFeatureFlags rsDef = do
-  (_, _, rawIntrospectionResult) <-
-    execRemoteGQ env Tracing.b3TraceContextPropagator adminUserInfo [] rsDef introspectionQuery
+  -- If a local schema file is configured, read from disk instead of
+  -- making an HTTP introspection request. The file should contain the
+  -- standard GraphQL introspection JSON response.
+  rawIntrospectionResult <- case _vrsdSchemaFile rsDef of
+    Just filePath -> do
+      liftIO $ BL.readFile filePath
+    Nothing -> do
+      (_, _, raw) <-
+        execRemoteGQ env Tracing.b3TraceContextPropagator adminUserInfo [] rsDef introspectionQuery
+      pure raw
   (ir, rsi) <- stitchRemoteSchema schemaSampledFeatureFlags rawIntrospectionResult rsDef
   -- The 'rawIntrospectionResult' contains the 'Bytestring' response of
   -- the introspection result of the remote server. We store this in the
@@ -175,7 +183,7 @@ execRemoteGQ env tracesPropagator userInfo reqHdrs rsdef gqlReq@GQLReq {..} = do
     resp <- onLeft res (throwRemoteSchemaHttp webhookEnvRecord)
     pure (time, mkSetCookieHeaders resp, resp ^. Wreq.responseBody)
   where
-    ValidatedRemoteSchemaDef _name webhookEnvRecord hdrConf fwdClientHdrs timeout _mPrefix = rsdef
+    ValidatedRemoteSchemaDef _name webhookEnvRecord hdrConf fwdClientHdrs timeout _mPrefix _schemaFile = rsdef
     url = _envVarValue webhookEnvRecord
     userInfoToHdrs = sessionVariablesToHeaders $ _uiSession userInfo
 
