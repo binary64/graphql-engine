@@ -92,6 +92,77 @@ Hasura brand assets (logos, the Hasura mascot, powered by badges etc.) can be fo
 [v2/assets/brand](assets/brand) folder. Feel free to use them in your application/website etc. We'd be thrilled if you
 add the "Powered by Hasura" badge to your applications built using Hasura. ❤️
 
+## Fork: Remote Schema Local File Support
+
+> **This fork** (`binary64/graphql-engine`) adds support for loading remote schema introspection from a local file instead of performing live HTTP introspection. This avoids the ~2GB memory spike that occurs when Hasura introspects a large remote schema at startup.
+
+### Why this exists
+
+Introspecting a large remote GraphQL API (e.g. 20,000+ types) causes Hasura to spike to ~2GB RSS during startup. By providing a pre-fetched introspection JSON file, Hasura can load the schema without the HTTP round-trip or memory spike — RSS stays ~76MB.
+
+### Usage: `schema_file` in metadata
+
+When calling the `add_remote_schema` metadata API, include a `schema_file` field pointing to a local JSON file containing the standard GraphQL introspection result:
+
+```json
+{
+  "type": "add_remote_schema",
+  "args": {
+    "name": "my_remote_api",
+    "definition": {
+      "url": "https://api.example.com/graphql",
+      "schema_file": "/path/to/introspection.json"
+    }
+  }
+}
+```
+
+The `schema_file` must contain a standard GraphQL introspection response:
+
+```json
+{
+  "data": {
+    "__schema": {
+      "queryType": { "name": "Query" },
+      "types": [...]
+    }
+  }
+}
+```
+
+When `schema_file` is provided, Hasura reads the schema from disk instead of performing HTTP introspection. The `url` field is still required (used for query execution), but introspection is skipped.
+
+### Usage: `HASURA_GRAPHQL_REMOTE_SCHEMA_FILE` environment variable
+
+You can also set the schema file path via environment variable. This is useful when you want to configure the file path at deployment time without modifying metadata:
+
+```bash
+HASURA_GRAPHQL_REMOTE_SCHEMA_FILE=/path/to/introspection.json
+```
+
+### Generating the introspection file
+
+Use a standard GraphQL introspection query to pre-fetch and save the schema:
+
+```bash
+curl -s -X POST https://api.example.com/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { queryType { name } mutationType { name } types { kind name description fields(includeDeprecated: true) { name description args { name description type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } defaultValue } type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } isDeprecated deprecationReason } inputFields { name description type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } defaultValue } interfaces { kind name ofType { kind name ofType { kind name ofType { kind name } } } } enumValues(includeDeprecated: true) { name description isDeprecated deprecationReason } possibleTypes { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } directives { name description locations args { name description type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } defaultValue } } } }"}' \
+  > introspection.json
+```
+
+Or wrap it with `{"data": ...}` if your API returns the schema directly.
+
+### Docker image
+
+Pre-built images are available from GHCR:
+
+```bash
+docker pull ghcr.io/binary64/graphql-engine:remote-schema-local-file
+```
+
+---
+
 ## Licenses
 
 ### V3
