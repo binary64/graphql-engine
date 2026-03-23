@@ -1,6 +1,0 @@
-vendor/
-vendor.orig/
-_output/
-*.temp
-bin/
-commands/commands.test
