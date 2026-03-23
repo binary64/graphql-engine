@@ -64,10 +64,15 @@ fetchRemoteSchema ::
   ValidatedRemoteSchemaDef ->
   m (IntrospectionResult, BL.ByteString, RemoteSchemaInfo)
 fetchRemoteSchema env schemaSampledFeatureFlags rsDef = do
-  -- If a local schema file is configured, read from disk instead of
-  -- making an HTTP introspection request. The file should contain the
-  -- standard GraphQL introspection JSON response.
-  rawIntrospectionResult <- case _vrsdSchemaFile rsDef of
+  -- Determine schema file path: metadata field takes priority, then env var fallback.
+  -- Priority: schema_file in metadata > HASURA_GRAPHQL_REMOTE_SCHEMA_FILE env var > live introspection.
+  let envVarSchemaFile = Env.lookupEnv env "HASURA_GRAPHQL_REMOTE_SCHEMA_FILE"
+      schemaFilePath = _vrsdSchemaFile rsDef <|> envVarSchemaFile
+  rawIntrospectionResult <- case schemaFilePath of
+    -- If a local schema file is configured, read from disk instead of
+    -- making an HTTP introspection request. The file should contain the
+    -- standard GraphQL introspection JSON response:
+    -- {"data": {"__schema": {...}}}
     Just filePath -> do
       liftIO $ BL.readFile filePath
     Nothing -> do
