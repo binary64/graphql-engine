@@ -182,7 +182,7 @@ instance FromJSON ApolloFederationStatus where
 
 isApolloFederationEnabled :: ApolloFederationStatus -> Bool
 isApolloFederationEnabled = \case
-  ApolloFederationEnabled -> True
+  ApolloFederationEnabled -> False -- Disabled in stripped fork
   ApolloFederationDisabled -> False
 
 instance ToJSON ApolloFederationStatus where

@@ -486,15 +486,10 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMCreateRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
   RMUpdateRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
   RMDeleteRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
-  RMCreateCronTrigger q ->
-    validateTransforms
-      (unUnvalidate . cctRequestTransform . _Just)
-      (unUnvalidate . cctResponseTransform . _Just)
-      (runCreateCronTrigger . _unUnvalidate)
-      q
-  RMDeleteCronTrigger q -> runDeleteCronTrigger q
-  RMCreateScheduledEvent q -> runCreateScheduledEvent q
-  RMDeleteScheduledEvent q -> runDeleteScheduledEvent q
+  RMCreateCronTrigger _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
+  RMDeleteCronTrigger _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
+  RMCreateScheduledEvent _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
+  RMDeleteScheduledEvent _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
   RMGetScheduledEvents q -> runGetScheduledEvents q
   RMGetScheduledEventInvocations q -> runGetScheduledEventInvocations q
   RMGetCronTriggers -> runGetCronTriggers
