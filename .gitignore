@@ -74,3 +74,4 @@ node_modules
 *.ticky.modules
 
 yarn-error.log
+cabal.project.local.dynamic.bak

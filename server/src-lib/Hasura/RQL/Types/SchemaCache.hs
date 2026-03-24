@@ -123,7 +123,6 @@ import Data.Int (Int64)
 import Data.Text qualified as T
 import Data.Text.Extended ((<<>))
 import Data.Text.Extended qualified as T
-import Database.MSSQL.Transaction qualified as MSSQL
 import Database.PG.Query qualified as PG
 import Hasura.Authentication.Role (RoleName)
 import Hasura.Authentication.User (UserInfoM)
@@ -713,8 +712,6 @@ instance (CacheRM m) => CacheRM (TraceT m) where
 instance (CacheRM m) => CacheRM (PG.TxET QErr m) where
   askSchemaCache = lift askSchemaCache
 
-instance (CacheRM m) => CacheRM (MSSQL.TxET e m) where
-  askSchemaCache = lift askSchemaCache
 
 getDependentObjs :: SchemaCache -> SchemaObjId -> [SchemaObjId]
 getDependentObjs = getDependentObjsWith (const True)

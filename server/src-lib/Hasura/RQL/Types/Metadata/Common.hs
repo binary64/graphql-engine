@@ -69,7 +69,7 @@ import Hasura.RQL.Types.Action
 import Hasura.RQL.Types.Allowlist
 import Hasura.RQL.Types.ApiLimit
 import Hasura.RQL.Types.Backend
-import Hasura.RQL.Types.BackendTag (BackendTag, HasTag (backendTag), backendPrefix)
+import Hasura.RQL.Types.BackendTag (HasTag (backendTag), backendPrefix)
 import Hasura.RQL.Types.BackendType
 import Hasura.RQL.Types.Common
 import Hasura.RQL.Types.CustomTypes
@@ -170,33 +170,7 @@ instance (Backend b) => FromJSONWithContext (BackendSourceKind b) (SourceMetadat
 backendSourceMetadataCodec :: JSONCodec BackendSourceMetadata
 backendSourceMetadataCodec =
   named "SourceMetadata"
-    $
-    -- Attempt to match against @SourceMetadata@ codecs for each native backend
-    -- type. If none match then apply the @SourceMetadata DataConnector@ codec.
-    -- DataConnector is the fallback case because the possible values for its
-    -- @_smKind@ property are not statically-known so it is difficult to
-    -- unambiguously distinguish a native source value from a dataconnector
-    -- source.
-    disjointMatchChoicesCodec
-      (matcherWithBackendCodec <$> filter (/= DataConnector) supportedBackends) -- list of codecs to try
-      (mkCodec (backendTag @('DataConnector))) -- codec for fallback case
-  where
-    matcherWithBackendCodec :: BackendType -> (BackendSourceMetadata -> Maybe BackendSourceMetadata, JSONCodec BackendSourceMetadata)
-    matcherWithBackendCodec backendType =
-      (matches backendType, AB.dispatchAnyBackend @Backend (AB.liftTag backendType) mkCodec)
-
-    mkCodec :: forall b. (Backend b) => (BackendTag b) -> JSONCodec BackendSourceMetadata
-    mkCodec _ = anySourceMetadataCodec $ codec @(SourceMetadata b)
-
-    matches :: BackendType -> BackendSourceMetadata -> Maybe BackendSourceMetadata
-    matches backendType input =
-      if runBackendType input == backendType
-        then Just input
-        else Nothing
-
-    runBackendType :: BackendSourceMetadata -> BackendType
-    runBackendType (BackendSourceMetadata input) = AB.runBackend input \sourceMeta ->
-      backendTypeFromBackendSourceKind $ _smKind sourceMeta
+    $ anySourceMetadataCodec (codec @(SourceMetadata ('Postgres 'Vanilla)))
 
 anySourceMetadataCodec :: (HasTag b) => JSONCodec (SourceMetadata b) -> JSONCodec BackendSourceMetadata
 anySourceMetadataCodec = dimapCodec dec enc

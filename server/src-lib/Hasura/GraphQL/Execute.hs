@@ -252,11 +252,7 @@ buildSubscriptionPlan removeEmptySubscriptionResponses userInfo rootFields param
         let subscriptionType =
               case AB.unpackAnyBackend @('Postgres 'Vanilla) e of
                 Just (IR.SourceConfigWith _ _ (IR.QDBR (IR.QDBStreamMultipleRows _))) -> Streaming
-                _ -> case AB.unpackAnyBackend @('Postgres 'Citus) e of
-                  Just (IR.SourceConfigWith _ _ (IR.QDBR (IR.QDBStreamMultipleRows _))) -> Streaming
-                  _ -> case AB.unpackAnyBackend @('Postgres 'Cockroach) e of
-                    Just (IR.SourceConfigWith _ _ (IR.QDBR (IR.QDBStreamMultipleRows _))) -> Streaming
-                    _ -> LiveQuery
+                _ -> LiveQuery
         newQDB <- AB.traverseBackend @EB.BackendExecute e \(IR.SourceConfigWith srcConfig queryTagsConfig (IR.QDBR qdb)) -> do
           let (newQDB, remoteJoins) = RJ.getRemoteJoinsQueryDB qdb
           unless (isNothing remoteJoins)

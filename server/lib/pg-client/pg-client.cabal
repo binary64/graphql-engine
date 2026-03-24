@@ -84,7 +84,6 @@ library
     , scientific
     , template-haskell
     , text
-    , text-builder
     , time
     , transformers
     , transformers-base

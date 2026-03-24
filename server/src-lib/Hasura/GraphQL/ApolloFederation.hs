@@ -1,4 +1,5 @@
--- | Tools for generating fields for Apollo federation
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+-- | Tools for generating fields for Apollo federation (STUBBED)
 module Hasura.GraphQL.ApolloFederation
   ( -- * Field Parser generators
     apolloRootFields,
@@ -171,22 +172,7 @@ apolloRootFields ::
   ApolloFederationStatus ->
   [(G.Name, Parser 'Output P.Parse (ApolloFederationParserFunction P.Parse))] ->
   [FieldParser P.Parse (G.SchemaIntrospection -> QueryRootField UnpreparedValue)]
-apolloRootFields apolloFederationStatus apolloFedTableParsers =
-  let -- generate the `_service` field parser
-      serviceField = mkServiceField
-
-      -- generate the `_entities` field parser
-      entityField = const <$> mkEntityUnionFieldParser apolloFedTableParsers
-   in -- we would want to expose these fields inorder to support apollo federation
-      -- refer https://www.apollographql.com/docs/federation/federation-spec
-      -- `serviceField` is essential to connect hasura to gateway, `entityField`
-      -- is essential only if we have types that has @key directive
-      if
-        | isApolloFederationEnabled apolloFederationStatus && not (null apolloFedTableParsers) ->
-            [serviceField, entityField]
-        | isApolloFederationEnabled apolloFederationStatus ->
-            [serviceField]
-        | otherwise -> []
+apolloRootFields _apolloFederationStatus _apolloFedTableParsers = []
 
 -- helpers
 

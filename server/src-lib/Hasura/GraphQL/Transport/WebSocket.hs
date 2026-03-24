@@ -51,7 +51,6 @@ import GHC.AssertNF.CPP
 import Hasura.App.State
 import Hasura.Authentication.Session (SessionVariables)
 import Hasura.Authentication.User (UserInfo (..))
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Backends.Postgres.Instances.Transport (runPGMutationTransaction)
 import Hasura.Base.Error
 import Hasura.CredentialCache

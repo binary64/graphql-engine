@@ -136,7 +136,9 @@ data ValidatedRemoteSchemaDef = ValidatedRemoteSchemaDef
     _vrsdFwdClientHeaders :: Bool,
     _vrsdTimeoutSeconds :: Int,
     -- | See '_rsdCustomization'.
-    _vrsdCustomization :: Maybe RemoteSchemaCustomization
+    _vrsdCustomization :: Maybe RemoteSchemaCustomization,
+    -- | Optional local file path for schema introspection JSON.
+    _vrsdSchemaFile :: Maybe FilePath
   }
   deriving (Show, Eq, Generic)
 
@@ -214,7 +216,7 @@ validateRemoteSchemaDef ::
   Env.Environment ->
   RemoteSchemaDef ->
   m ValidatedRemoteSchemaDef
-validateRemoteSchemaDef name env (RemoteSchemaDef mUrl mUrlEnv hdrC fwdHdrs mTimeout customization) = do
+validateRemoteSchemaDef name env (RemoteSchemaDef mUrl mUrlEnv hdrC fwdHdrs mTimeout customization schemaFile) = do
   validateRemoteSchemaCustomization customization
   case (mUrl, mUrlEnv) of
     -- case 1: URL is supplied as a template
@@ -222,11 +224,11 @@ validateRemoteSchemaDef name env (RemoteSchemaDef mUrl mUrlEnv hdrC fwdHdrs mTim
       resolvedWebhookTxt <- unResolvedWebhook <$> resolveWebhook env url
       case N.parseURI $ T.unpack resolvedWebhookTxt of
         Nothing -> throw400 InvalidParams $ "not a valid URI generated from the template: " <> getTemplateFromUrl url
-        Just uri -> return $ ValidatedRemoteSchemaDef name (EnvRecord (getTemplateFromUrl url) uri) hdrs fwdHdrs timeout customization
+        Just uri -> return $ ValidatedRemoteSchemaDef name (EnvRecord (getTemplateFromUrl url) uri) hdrs fwdHdrs timeout customization schemaFile
     -- case 2: URL is supplied as an environment variable
     (Nothing, Just urlEnv) -> do
       urlEnv' <- getUrlFromEnv env urlEnv
-      return $ ValidatedRemoteSchemaDef name urlEnv' hdrs fwdHdrs timeout customization
+      return $ ValidatedRemoteSchemaDef name urlEnv' hdrs fwdHdrs timeout customization schemaFile
     -- case 3: No url is supplied, throws an error 400
     (Nothing, Nothing) ->
       throw400 InvalidParams "both `url` and `url_from_env` can't be empty"

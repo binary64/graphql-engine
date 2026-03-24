@@ -34,7 +34,6 @@ import Hasura.RQL.DDL.ApiLimit
 import Hasura.RQL.DDL.ComputedField
 import Hasura.RQL.DDL.ConnectionTemplate
 import Hasura.RQL.DDL.CustomTypes
-import Hasura.RQL.DDL.DataConnector
 import Hasura.RQL.DDL.Endpoint
 import Hasura.RQL.DDL.EventTrigger
 import Hasura.RQL.DDL.GraphqlSchemaIntrospection
@@ -140,7 +139,7 @@ runMetadataQuery appContext schemaCache closeWebsocketsOnMetadataChange RQLMetad
           then emptyMetadataDefaults
           else acMetadataDefaults appContext
   let dynamicConfig = buildCacheDynamicConfig appContext
-  ((r, modMetadata), modSchemaCache, cacheInvalidations, sourcesIntrospection, schemaRegistryAction) <-
+  ((r, modMetadata), modSchemaCache, cacheInvalidations, sourcesIntrospection) <-
     runMetadataQueryM
       (acEnvironment appContext)
       (acSchemaSampledFeatureFlags appContext)
@@ -182,13 +181,7 @@ runMetadataQuery appContext schemaCache closeWebsocketsOnMetadataChange RQLMetad
         Tracing.newSpan "storeSourcesIntrospection" Tracing.SKInternal
           $ saveSourcesIntrospection logger sourcesIntrospection newResourceVersion
 
-        -- run the schema registry action
-        Tracing.newSpan "runSchemaRegistryAction" Tracing.SKInternal
-          $ for_ schemaRegistryAction
-          $ \action -> do
-            liftIO $ action newResourceVersion (scInconsistentObjs (lastBuiltSchemaCache modSchemaCache)) modMetadata
-
-        (_, modSchemaCache', _, _, _) <-
+        (_, modSchemaCache', _, _) <-
           Tracing.newSpan "setMetadataResourceVersionInSchemaCache" Tracing.SKInternal
             $ setMetadataResourceVersionInSchemaCache newResourceVersion
             & runCacheRWT dynamicConfig modSchemaCache
@@ -484,24 +477,19 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMGetEventInvocationLogs q -> dispatchEventTrigger runGetEventInvocationLogs q
   RMGetEventById q -> dispatchEventTrigger runGetEventById q
   RMAddRemoteSchema q -> runAddRemoteSchema env schemaSampledFeatureFlags q
-  RMUpdateRemoteSchema q -> runUpdateRemoteSchema env schemaSampledFeatureFlags q
+  RMUpdateRemoteSchema _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
   RMRemoveRemoteSchema q -> runRemoveRemoteSchema q
   RMReloadRemoteSchema q -> runReloadRemoteSchema q
   RMIntrospectRemoteSchema q -> runIntrospectRemoteSchema q
-  RMAddRemoteSchemaPermissions q -> runAddRemoteSchemaPermissions remoteSchemaPerms q
-  RMDropRemoteSchemaPermissions q -> runDropRemoteSchemaPermissions q
-  RMCreateRemoteSchemaRemoteRelationship q -> runCreateRemoteSchemaRemoteRelationship q
-  RMUpdateRemoteSchemaRemoteRelationship q -> runUpdateRemoteSchemaRemoteRelationship q
-  RMDeleteRemoteSchemaRemoteRelationship q -> runDeleteRemoteSchemaRemoteRelationship q
-  RMCreateCronTrigger q ->
-    validateTransforms
-      (unUnvalidate . cctRequestTransform . _Just)
-      (unUnvalidate . cctResponseTransform . _Just)
-      (runCreateCronTrigger . _unUnvalidate)
-      q
-  RMDeleteCronTrigger q -> runDeleteCronTrigger q
-  RMCreateScheduledEvent q -> runCreateScheduledEvent q
-  RMDeleteScheduledEvent q -> runDeleteScheduledEvent q
+  RMAddRemoteSchemaPermissions _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMDropRemoteSchemaPermissions _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMCreateRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMUpdateRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMDeleteRemoteSchemaRemoteRelationship _ -> throw400 NotSupported "Dynamic remote schemas are not supported in this fork."
+  RMCreateCronTrigger _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
+  RMDeleteCronTrigger _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
+  RMCreateScheduledEvent _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
+  RMDeleteScheduledEvent _ -> throw400 NotSupported "Scheduled triggers are not supported in this fork."
   RMGetScheduledEvents q -> runGetScheduledEvents q
   RMGetScheduledEventInvocations q -> runGetScheduledEventInvocations q
   RMGetCronTriggers -> runGetCronTriggers
@@ -530,8 +518,8 @@ runMetadataQueryV1M env schemaSampledFeatureFlags remoteSchemaPerms currentResou
   RMUpdateScopeOfCollectionInAllowlist q -> runUpdateScopeOfCollectionInAllowlist q
   RMCreateRestEndpoint q -> runCreateEndpoint q
   RMDropRestEndpoint q -> runDropEndpoint q
-  RMDCAddAgent q -> runAddDataConnectorAgent env q
-  RMDCDeleteAgent q -> runDeleteDataConnectorAgent q
+  RMDCAddAgent _ -> throw400 NotSupported "DataConnector agents are not supported (backend removed)"
+  RMDCDeleteAgent _ -> throw400 NotSupported "DataConnector agents are not supported (backend removed)"
   RMSetCustomTypes q -> runSetCustomTypes q
   RMSetApiLimits q -> runSetApiLimits q
   RMRemoveApiLimits -> runRemoveApiLimits

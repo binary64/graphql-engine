@@ -1,9 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE TemplateHaskell #-}
 
--- | Telemetry types
---
--- Define anonymized metrics regarding usage of various features of Hasura.
+-- | Telemetry types — disabled in stripped fork. Types kept for interface compatibility.
 module Hasura.Server.Telemetry.Types
   ( -- * Metrics
     RelationshipMetric (..),
@@ -37,12 +34,10 @@ module Hasura.Server.Telemetry.Types
   )
 where
 
-import CI qualified
 import Data.Aeson qualified as J
 import Data.Monoid (Sum (..))
 import Hasura.Prelude
 import Hasura.RQL.Types.BackendType (BackendType)
-import Hasura.RQL.Types.Metadata.Instances ()
 import Hasura.Server.Telemetry.Counters
 import Hasura.Server.Types
 import Hasura.Server.Version
@@ -168,7 +163,6 @@ data HasuraTelemetry = HasuraTelemetry
   { _htMetadataDbUid :: MetadataDbId,
     _htInstanceUid :: InstanceId,
     _htHasuraVersion :: Version,
-    _htCi :: Maybe CI.CI,
     _htSourceMetadata :: SourceMetadata,
     _htMetrics :: Metrics,
     _htExperimentalFeatures :: HashSet ExperimentalFeature
@@ -179,7 +173,6 @@ instance J.ToJSON HasuraTelemetry where
   toJSON = J.genericToJSON hasuraJSON
   toEncoding = J.genericToEncoding hasuraJSON
 
--- | The telemetry table to which we'll add telemetry.
 newtype Topic = Topic {getTopic :: Text}
   deriving (Show, Eq, J.ToJSON, J.FromJSON)
 

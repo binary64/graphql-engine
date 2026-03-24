@@ -27,7 +27,6 @@ module Database.PG.Query.Transaction
     execTx,
     Query,
     fromText,
-    fromBuilder,
     getQueryText,
     describePreparedStatement,
     PreparedDescription (..),
@@ -56,7 +55,6 @@ import Database.PG.Query.Class
 import Database.PG.Query.Connection
 import Database.PostgreSQL.LibPQ qualified as PQ
 import Language.Haskell.TH.Syntax (Lift)
-import Text.Builder qualified as TB
 import Prelude
 
 -------------------------------------------------------------------------------
@@ -157,9 +155,6 @@ newtype Query = Query
 
 fromText :: Text -> Query
 fromText = Query
-
-fromBuilder :: TB.Builder -> Query
-fromBuilder = Query . TB.run
 
 withQE ::
   (MonadIO m, FromRes a, ToPrepArgs r) =>

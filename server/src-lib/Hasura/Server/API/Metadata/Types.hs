@@ -6,6 +6,7 @@ module Hasura.Server.API.Metadata.Types
   )
 where
 
+import Data.Aeson qualified as J
 import GHC.Generics
 import Hasura.Authentication.Role (DropInheritedRole, InheritedRole)
 import Hasura.Function.API qualified as Functions
@@ -14,7 +15,6 @@ import Hasura.NativeQuery.API qualified as NativeQueries
 import Hasura.RQL.DDL.Action
 import Hasura.RQL.DDL.ComputedField
 import Hasura.RQL.DDL.ConnectionTemplate
-import Hasura.RQL.DDL.DataConnector
 import Hasura.RQL.DDL.EventTrigger
 import Hasura.RQL.DDL.Metadata
 import Hasura.RQL.DDL.Permission
@@ -160,9 +160,9 @@ data RQLMetadataV1
   | -- Rest endpoints
     RMCreateRestEndpoint !CreateEndpoint
   | RMDropRestEndpoint !DropEndpoint
-  | -- GraphQL Data Connectors
-    RMDCAddAgent !DCAddAgent
-  | RMDCDeleteAgent !DCDeleteAgent
+  | -- GraphQL Data Connectors (stubs; DataConnector backend removed)
+    RMDCAddAgent !J.Value
+  | RMDCDeleteAgent !J.Value
   | -- Custom types
     RMSetCustomTypes !CustomTypes
   | -- Api limits

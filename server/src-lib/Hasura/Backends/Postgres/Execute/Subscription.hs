@@ -102,7 +102,7 @@ validateVariablesTx variableValues = do
   -- no need to test the types when there are no variables to test.
   unless (null variableValues) do
     let valSel = mkValidationSel $ toList variableValues
-    PG.Discard () <- liftTx $ PG.rawQE dataExnErrHandler (PG.fromBuilder $ toSQL valSel) [] False
+    PG.Discard () <- liftTx $ PG.rawQE dataExnErrHandler (PG.fromText $ toSQLTxt valSel) [] False
     pure ()
   pure . ValidatedVariables $ fmap (txtEncodedVal . cvValue) variableValues
   where

@@ -24,7 +24,6 @@ import Hasura.Backends.Postgres.Execute.Types (PGExecCtxInfo (..), PGExecFrom (.
 import Hasura.Backends.Postgres.Instances.NativeQueries as Postgres (validateNativeQuery)
 import Hasura.Backends.Postgres.SQL.Types (QualifiedObject (..), QualifiedTable)
 import Hasura.Backends.Postgres.SQL.Types qualified as Postgres
-import Hasura.Backends.Postgres.Types.CitusExtraTableMetadata
 import Hasura.Base.Error
 import Hasura.Prelude
 import Hasura.RQL.DDL.Relationship (defaultBuildArrayRelationshipInfo, defaultBuildObjectRelationshipInfo)
@@ -43,9 +42,6 @@ import Language.GraphQL.Draft.Syntax (unDescription)
 --------------------------------------------------------------------------------
 -- PostgresMetadata
 
--- | We differentiate the handling of metadata between Citus and Vanilla
--- Postgres because Citus imposes limitations on the types of joins that it
--- permits, which then limits the types of relations that we can track.
 class PostgresMetadata (pgKind :: PostgresKind) where
   -- TODO: find a better name
   validateRel ::
@@ -132,134 +128,6 @@ instance PostgresMetadata 'Vanilla where
         FROM information_schema.tables as info_schema, partitions
         WHERE
           info_schema.table_schema NOT IN ('information_schema', 'pg_catalog', 'hdb_catalog', '_timescaledb_internal')
-          AND NOT (info_schema.table_name = ANY (partitions.names))
-        ORDER BY info_schema.table_schema, info_schema.table_name
-      |]
-
-instance PostgresMetadata 'Citus where
-  validateRel ::
-    forall m.
-    (MonadError QErr m) =>
-    TableCache ('Postgres 'Citus) ->
-    QualifiedTable ->
-    Either (ObjRelDef ('Postgres 'Citus)) (ArrRelDef ('Postgres 'Citus)) ->
-    m ()
-  validateRel tableCache sourceTable relInfo = do
-    sourceTableInfo <- lookupTableInfo sourceTable
-    case relInfo of
-      Left (RelDef _ obj _) ->
-        case obj of
-          RUFKeyOn (SameTable _) -> pure ()
-          RUFKeyOn (RemoteTable targetTable _) -> checkObjectRelationship sourceTableInfo targetTable
-          RUManual RelManualTableConfig {} -> pure ()
-          RUManual RelManualNativeQueryConfig {} -> pure ()
-      Right (RelDef _ obj _) ->
-        case obj of
-          RUFKeyOn (ArrRelUsingFKeyOn targetTable _col) -> checkArrayRelationship sourceTableInfo targetTable
-          RUManual RelManualTableConfig {} -> pure ()
-          RUManual RelManualNativeQueryConfig {} -> pure ()
-    where
-      lookupTableInfo tableName =
-        HashMap.lookup tableName tableCache
-          `onNothing` throw400 NotFound ("no such table " <>> tableName)
-
-      checkObjectRelationship sourceTableInfo targetTable = do
-        targetTableInfo <- lookupTableInfo targetTable
-        let notSupported = throwNotSupportedError sourceTableInfo targetTableInfo "object"
-        case ( _tciExtraTableMetadata $ _tiCoreInfo sourceTableInfo,
-               _tciExtraTableMetadata $ _tiCoreInfo targetTableInfo
-             ) of
-          (Distributed {}, Local {}) -> notSupported
-          (Distributed {}, Reference {}) -> pure ()
-          (Distributed {}, Distributed {}) -> pure ()
-          (_, Distributed {}) -> notSupported
-          (_, _) -> pure ()
-
-      checkArrayRelationship sourceTableInfo targetTable = do
-        targetTableInfo <- lookupTableInfo targetTable
-        let notSupported = throwNotSupportedError sourceTableInfo targetTableInfo "array"
-        case ( _tciExtraTableMetadata $ _tiCoreInfo sourceTableInfo,
-               _tciExtraTableMetadata $ _tiCoreInfo targetTableInfo
-             ) of
-          (Distributed {}, Distributed {}) -> pure ()
-          (Distributed {}, _) -> notSupported
-          (_, Distributed {}) -> notSupported
-          (_, _) -> pure ()
-
-      showDistributionType :: ExtraTableMetadata -> Text
-      showDistributionType = \case
-        Local {} -> "local"
-        Distributed {} -> "distributed"
-        Reference {} -> "reference"
-
-      throwNotSupportedError :: TableInfo ('Postgres 'Citus) -> TableInfo ('Postgres 'Citus) -> Text -> m ()
-      throwNotSupportedError sourceTableInfo targetTableInfo t =
-        let tciSrc = _tiCoreInfo sourceTableInfo
-            tciTgt = _tiCoreInfo targetTableInfo
-         in throw400
-              NotSupported
-              ( showDistributionType (_tciExtraTableMetadata tciSrc)
-                  <> " tables ("
-                  <> toTxt (_tciName tciSrc)
-                  <> ") cannot have an "
-                  <> t
-                  <> " relationship against a "
-                  <> showDistributionType (_tciExtraTableMetadata $ _tiCoreInfo targetTableInfo)
-                  <> " table ("
-                  <> toTxt (_tciName tciTgt)
-                  <> ")"
-              )
-
-  tableTypeImpl = tableType
-  listAllTablesSql =
-    Query.fromText
-      [i|
-        WITH partitions as (
-          SELECT array(
-            SELECT
-            child.relname       AS partition
-        FROM pg_inherits
-            JOIN pg_class child             ON pg_inherits.inhrelid   = child.oid
-            JOIN pg_namespace nmsp_child    ON nmsp_child.oid   = child.relnamespace
-          ) as names
-        )
-        SELECT info_schema.table_schema, info_schema.table_name
-        FROM information_schema.tables as info_schema, partitions
-        WHERE
-          info_schema.table_schema NOT IN ('pg_catalog', 'citus', 'information_schema', 'columnar', 'columnar_internal', 'guest', 'INFORMATION_SCHEMA', 'sys', 'db_owner', 'db_securityadmin', 'db_accessadmin', 'db_backupoperator', 'db_ddladmin', 'db_datawriter', 'db_datareader', 'db_denydatawriter', 'db_denydatareader', 'hdb_catalog', '_timescaledb_internal')
-          AND NOT (info_schema.table_name = ANY (partitions.names))
-          AND info_schema.table_name NOT IN ('citus_tables')
-        ORDER BY info_schema.table_schema, info_schema.table_name
-      |]
-
-instance PostgresMetadata 'Cockroach where
-  validateRel _ _ _ = pure ()
-  tableTypeImpl = Postgres._petmTableType
-
-  pgTypeOidMapping =
-    InsOrdHashMap.fromList
-      [ (Postgres.PGInteger, PTI.int8),
-        (Postgres.PGSerial, PTI.int8),
-        (Postgres.PGJSON, PTI.jsonb)
-      ]
-      `InsOrdHashMap.union` pgTypeOidMapping @'Vanilla
-
-  listAllTablesSql =
-    Query.fromText
-      [i|
-        WITH partitions as (
-          SELECT array(
-            SELECT
-            child.relname       AS partition
-        FROM pg_inherits
-            JOIN pg_class child             ON pg_inherits.inhrelid   = child.oid
-            JOIN pg_namespace nmsp_child    ON nmsp_child.oid   = child.relnamespace
-          ) as names
-        )
-        SELECT info_schema.table_schema, info_schema.table_name
-        FROM information_schema.tables as info_schema, partitions
-        WHERE
-          info_schema.table_schema NOT IN ('pg_catalog', 'crdb_internal', 'information_schema', 'columnar', 'guest', 'INFORMATION_SCHEMA', 'sys', 'db_owner', 'db_securityadmin', 'db_accessadmin', 'db_backupoperator', 'db_ddladmin', 'db_datawriter', 'db_datareader', 'db_denydatawriter', 'db_denydatareader', 'hdb_catalog', '_timescaledb_internal', 'pg_extension')
           AND NOT (info_schema.table_name = ANY (partitions.names))
         ORDER BY info_schema.table_schema, info_schema.table_name
       |]

@@ -24,9 +24,7 @@ extra-source-files:
   -- To easily rebuild this list, use the command 'find server/src-rsr -type f | sort'.
   src-rsr/catalog_version.txt
   src-rsr/catalog_versions.txt
-  src-rsr/citus_table_metadata.sql
   src-rsr/clear_system_metadata.sql
-  src-rsr/cockroach_table_metadata.sql
   src-rsr/console.html
   src-rsr/drop_pg_source.sql
   src-rsr/init_pg_source.sql
@@ -112,16 +110,6 @@ extra-source-files:
   src-rsr/migrations/7_to_8.sql
   src-rsr/migrations/8_to_9.sql
   src-rsr/migrations/9_to_10.sql
-  src-rsr/mssql/drop_mssql_source.sql
-  src-rsr/mssql/init_mssql_source.sql
-  src-rsr/mssql/mssql_delete_trigger.sql.shakespeare
-  src-rsr/mssql/mssql_fetch_events.sql.shakespeare
-  src-rsr/mssql/mssql_insert_trigger.sql.shakespeare
-  src-rsr/mssql/mssql_source_migrations/1_to_2.sql
-  src-rsr/mssql/mssql_source_migrations/2_to_3.sql
-  src-rsr/mssql/mssql_table_metadata.sql
-  src-rsr/mssql/mssql_unlock_events.sql.shakespeare
-  src-rsr/mssql/mssql_update_trigger.sql.shakespeare
   src-rsr/pg_function_metadata.sql
   src-rsr/pg_source_migrations/0_to_1.sql
   src-rsr/pg_source_migrations/1_to_2.sql
@@ -280,11 +268,9 @@ common lib-depends
                      , autodocodec-openapi3
                      , barbies
                      , base
-                     , ghc-debug-stub
                      , bytestring
                      , containers
                      , data-default
-                     , dc-api
                      , deepseq
                      , dependent-map >=0.4 && <0.5
                      , dependent-sum
@@ -299,7 +285,6 @@ common lib-depends
                      , hasura-extras
                      , hasura-json-encoding
                      , hasura-prelude
-                     , http-client-tls
                      , http-conduit
                      , http-media
                      , http-types
@@ -366,7 +351,6 @@ common lib-depends
 
                      -- Logging related
                      , network
-                     , network-bsd
                      , byteorder
 
                      -- for parsing RSA keys
@@ -471,11 +455,8 @@ common lib-depends
                      -- needed for deriving via
                      , semigroups >= 0.19
 
-                     -- mssql support
-                     , odbc
                      , resource-pool
 
-                     -- bigquery support
                      , memory
                      , crypton-x509-store
                      , crypton-connection
@@ -485,7 +466,6 @@ common lib-depends
                      , crypton-x509-system
                      , tagged
                       -- dependency of vendored 'ip':
-                     , wide-word
 
                      -- debounce logs
                      , fold-debounce
@@ -504,81 +484,16 @@ library
                      , Control.Monad.Trans.Managed
                      , Data.Aeson.Kriti.Functions
                      , Data.SqlCommenter
-                     , Database.MSSQL.Transaction
-                     , Database.MSSQL.Pool
 
                      , Hasura.App
                      , Hasura.Metadata.Class
 
                      , Hasura.App.State
-                     , Hasura.Backends.BigQuery.Connection
-                     , Hasura.Backends.BigQuery.Execute
-                     , Hasura.Backends.BigQuery.DDL
-                     , Hasura.Backends.BigQuery.DDL.BoolExp
-                     , Hasura.Backends.BigQuery.DDL.RunSQL
-                     , Hasura.Backends.BigQuery.DDL.Source
-                     , Hasura.Backends.BigQuery.DDL.ComputedField
-                     , Hasura.Backends.BigQuery.FromIr
-                     , Hasura.Backends.BigQuery.Instances.API
-                     , Hasura.Backends.BigQuery.Instances.Execute
-                     , Hasura.Backends.BigQuery.Instances.Schema
-                     , Hasura.Backends.BigQuery.Instances.SchemaCache
-                     , Hasura.Backends.BigQuery.Instances.Transport
-                     , Hasura.Backends.BigQuery.Instances.Types
-                     , Hasura.Backends.BigQuery.Instances.Metadata
-                     , Hasura.Backends.BigQuery.Meta
-                     , Hasura.Backends.BigQuery.Name
-                     , Hasura.Backends.BigQuery.Parser.Scalars
-                     , Hasura.Backends.BigQuery.Plan
-                     , Hasura.Backends.BigQuery.Schema.Introspection
-                     , Hasura.Backends.BigQuery.Source
-                     , Hasura.Backends.BigQuery.ToQuery
-                     , Hasura.Backends.BigQuery.Types
 
-                     , Hasura.Backends.MSSQL.Connection
-                     , Hasura.Backends.MSSQL.DDL
-                     , Hasura.Backends.MSSQL.DDL.BoolExp
-                     , Hasura.Backends.MSSQL.DDL.EventTrigger
-                     , Hasura.Backends.MSSQL.DDL.RunSQL
-                     , Hasura.Backends.MSSQL.DDL.Source
-                     , Hasura.Backends.MSSQL.DDL.Source.Version
-                     , Hasura.Backends.MSSQL.Execute.QueryTags
-                     , Hasura.Backends.MSSQL.Execute.Delete
-                     , Hasura.Backends.MSSQL.Execute.Insert
-                     , Hasura.Backends.MSSQL.Execute.Update
-                     , Hasura.Backends.MSSQL.FromIr
-                     , Hasura.Backends.MSSQL.FromIr.Constants
-                     , Hasura.Backends.MSSQL.FromIr.Delete
-                     , Hasura.Backends.MSSQL.FromIr.Expression
-                     , Hasura.Backends.MSSQL.FromIr.Insert
-                     , Hasura.Backends.MSSQL.FromIr.MutationResponse
-                     , Hasura.Backends.MSSQL.FromIr.Query
-                     , Hasura.Backends.MSSQL.FromIr.SelectIntoTempTable
-                     , Hasura.Backends.MSSQL.FromIr.Update
-                     , Hasura.Backends.MSSQL.Instances.API
-                     , Hasura.Backends.MSSQL.Instances.Execute
-                     , Hasura.Backends.MSSQL.Instances.Metadata
-                     , Hasura.Backends.MSSQL.Instances.Schema
-                     , Hasura.Backends.MSSQL.Instances.SchemaCache
-                     , Hasura.Backends.MSSQL.Instances.Transport
-                     , Hasura.Backends.MSSQL.Instances.Types
-                     , Hasura.Backends.MSSQL.Meta
-                     , Hasura.Backends.MSSQL.Plan
-                     , Hasura.Backends.MSSQL.Schema.IfMatched
-                     , Hasura.Backends.MSSQL.Schema.Introspection
-                     , Hasura.Backends.MSSQL.SQL.Value
-                     , Hasura.Backends.MSSQL.SQL.Error
-                     , Hasura.Backends.MSSQL.ToQuery
-                     , Hasura.Backends.MSSQL.Types
-                     , Hasura.Backends.MSSQL.Types.Insert
-                     , Hasura.Backends.MSSQL.Types.Instances
-                     , Hasura.Backends.MSSQL.Types.Internal
-                     , Hasura.Backends.MSSQL.Types.Update
                      , Hasura.Backends.Postgres.Connection
                      , Hasura.Backends.Postgres.Connection.Connect
                      , Hasura.Backends.Postgres.Connection.MonadTx
                      , Hasura.Backends.Postgres.Connection.Settings
-                     , Hasura.Backends.Postgres.Connection.VersionCheck
                      , Hasura.Backends.Postgres.DDL
                      , Hasura.Backends.Postgres.DDL.BoolExp
                      , Hasura.Backends.Postgres.DDL.ComputedField
@@ -598,7 +513,6 @@ library
                      , Hasura.Backends.Postgres.Instances.Execute
                      , Hasura.Backends.Postgres.Instances.Metadata
                      , Hasura.Backends.Postgres.Instances.NativeQueries
-                     , Hasura.Backends.Postgres.Instances.PingSource
                      , Hasura.Backends.Postgres.Instances.Schema
                      , Hasura.Backends.Postgres.Instances.SchemaCache
                      , Hasura.Backends.Postgres.Instances.Transport
@@ -633,32 +547,12 @@ library
                      , Hasura.Backends.Postgres.Translate.Update
                      , Hasura.Backends.Postgres.Types.Aggregates
                      , Hasura.Backends.Postgres.Types.BoolExp
-                     , Hasura.Backends.Postgres.Types.CitusExtraTableMetadata
                      , Hasura.Backends.Postgres.Types.ComputedField
                      , Hasura.Backends.Postgres.Types.Function
                      , Hasura.Backends.Postgres.Types.Column
                      , Hasura.Backends.Postgres.Types.Insert
                      , Hasura.Backends.Postgres.Types.Table
                      , Hasura.Backends.Postgres.Types.Update
-
-                     -- GraphQL Data Connector
-                     , Hasura.Backends.DataConnector.Adapter.API
-                     , Hasura.Backends.DataConnector.Adapter.Backend
-                     , Hasura.Backends.DataConnector.Adapter.Execute
-                     , Hasura.Backends.DataConnector.Adapter.ConfigTransform
-                     , Hasura.Backends.DataConnector.Adapter.RunSQL
-                     , Hasura.Backends.DataConnector.Adapter.Metadata
-                     , Hasura.Backends.DataConnector.Adapter.Schema
-                     , Hasura.Backends.DataConnector.Adapter.SchemaCache
-                     , Hasura.Backends.DataConnector.Adapter.Transport
-                     , Hasura.Backends.DataConnector.Adapter.Types
-                     , Hasura.Backends.DataConnector.Adapter.Types.Mutations
-                     , Hasura.Backends.DataConnector.Agent.Client
-                     , Hasura.Backends.DataConnector.Logging
-                     , Hasura.Backends.DataConnector.Plan.Common
-                     , Hasura.Backends.DataConnector.Plan.MutationPlan
-                     , Hasura.Backends.DataConnector.Plan.QueryPlan
-                     , Hasura.Backends.DataConnector.Plan.RemoteRelationshipPlan
 
                      -- Exposed for benchmark:
                      , Hasura.Cache.Bounded
@@ -823,7 +717,6 @@ library
                      , Hasura.RQL.Types.ComputedField
                      , Hasura.RQL.Types.ComputedField.Name
                      , Hasura.RQL.Types.CustomTypes
-                     , Hasura.RQL.Types.DataConnector
                      , Hasura.RQL.Types.EECredentials
                      , Hasura.RQL.Types.Endpoint
                      , Hasura.RQL.Types.Endpoint.Trie
@@ -881,7 +774,6 @@ library
                      , Hasura.RQL.DDL.ComputedField
                      , Hasura.RQL.DDL.ConnectionTemplate
                      , Hasura.RQL.DDL.CustomTypes
-                     , Hasura.RQL.DDL.DataConnector
                      , Hasura.RQL.DDL.Endpoint
                      , Hasura.RQL.DDL.GraphqlSchemaIntrospection
                      , Hasura.RQL.DDL.InheritedRoles
@@ -1064,10 +956,10 @@ executable graphql-engine
   build-depends:     aeson
                    , base
                    , graphql-engine
-                   , ghc-debug-stub
                    , bytestring
                    , ekg-core
                    , ekg-prometheus
+                   , ghc-debug-stub
                    , hasura-extras
                    , hasura-prelude
                    , kan-extensions
@@ -1115,7 +1007,6 @@ test-suite graphql-engine-tests
     , dependent-map
     , dependent-sum
     , ekg-core
-    , dc-api
     , free
     , graphql-parser
     , data-has
@@ -1128,7 +1019,6 @@ test-suite graphql-engine-tests
     , hspec-expectations-lifted
     , hspec-hedgehog
     , http-client
-    , http-client-tls
     , http-types
     , HUnit
     , immortal
@@ -1192,24 +1082,6 @@ test-suite graphql-engine-tests
     Hasura.AppSpec
     Hasura.Authentication.SessionSpec
     Hasura.Base.Error.TestInstances
-    Hasura.Backends.BigQuery.SourceSpec
-    Hasura.Backends.BigQuery.TypesSpec
-    Hasura.Backends.DataConnector.Adapter.TypesSpec
-    Hasura.Backends.DataConnector.API.V0.AggregateSpec
-    Hasura.Backends.DataConnector.API.V0.CapabilitiesSpec
-    Hasura.Backends.DataConnector.API.V0.ColumnSpec
-    Hasura.Backends.DataConnector.API.V0.ConfigSchemaSpec
-    Hasura.Backends.DataConnector.API.V0.ExpressionSpec
-    Hasura.Backends.DataConnector.API.V0.FunctionSpec
-    Hasura.Backends.DataConnector.API.V0.MutationsSpec
-    Hasura.Backends.DataConnector.API.V0.OrderBySpec
-    Hasura.Backends.DataConnector.API.V0.QuerySpec
-    Hasura.Backends.DataConnector.API.V0.RelationshipsSpec
-    Hasura.Backends.DataConnector.API.V0.ScalarSpec
-    Hasura.Backends.DataConnector.API.V0.SchemaSpec
-    Hasura.Backends.DataConnector.API.V0.TableSpec
-    Hasura.Backends.DataConnector.API.V0.TargetSpec
-    Hasura.Backends.Postgres.Connection.VersionCheckSpec
     Hasura.Backends.Postgres.Execute.PrepareSpec
     Hasura.Backends.Postgres.NativeQueries.NativeQueriesSpec
     Hasura.Backends.Postgres.PGScalarTypeSpec
@@ -1279,20 +1151,6 @@ test-suite graphql-engine-tests
     Test.QuickCheck.Extended
     Test.SIString
 
-test-suite graphql-engine-test-mssql
-  import: common-all, common-exe, lib-depends
-  build-tool-depends: hspec-discover:hspec-discover
-  type: exitcode-stdio-1.0
-  build-depends:
-      graphql-engine
-    , hspec
-    , odbc
-  hs-source-dirs: test-mssql
-  main-is: Main.hs
-  other-modules:
-    Database.MSSQL.TransactionSpec
-    Hasura.Backends.MSSQL.ErrorSpec
-    SpecHook
 
 test-suite graphql-engine-test-postgres
   import: common-all, common-exe, lib-depends

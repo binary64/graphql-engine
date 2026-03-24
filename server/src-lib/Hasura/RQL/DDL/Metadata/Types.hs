@@ -43,7 +43,6 @@ import Data.Aeson.KeyMap qualified as KeyMap
 import Data.CaseInsensitive qualified as CI
 import Data.Environment qualified as Env
 import Hasura.Authentication.Session (SessionVariables)
-import Hasura.Backends.DataConnector.Adapter.Types (DataConnectorName)
 import Hasura.Prelude
 import Hasura.RQL.DDL.Warnings (AllowWarnings (..))
 import Hasura.RQL.DDL.Webhook.Transform (MetadataResponseTransform, RequestTransform)
@@ -101,16 +100,11 @@ type ReloadRemoteSchemas = ReloadSpec RemoteSchemaName
 
 type ReloadSources = ReloadSpec Common.SourceName
 
-type ReloadDataConnectors = ReloadSpec DataConnectorName
-
 reloadAllRemoteSchemas :: ReloadRemoteSchemas
 reloadAllRemoteSchemas = RSReloadAll
 
 reloadAllSources :: ReloadSources
 reloadAllSources = RSReloadAll
-
-reloadAllDataConnectors :: ReloadDataConnectors
-reloadAllDataConnectors = RSReloadAll
 
 -- | 'ReloadMetadata' should be used when there is a change in
 -- underlying Postgres database that Hasura should be aware
@@ -126,8 +120,7 @@ data ReloadMetadata = ReloadMetadata
     --   the SQL trigger in the source and they'd simply want the event trigger to be
     --   recreated without deleting and creating the event trigger. By default, no
     --   source's event triggers will be recreated.
-    _rmRecreateEventTriggers :: ReloadSources,
-    _rmReloadDataConnectors :: ReloadDataConnectors
+    _rmRecreateEventTriggers :: ReloadSources
   }
   deriving (Show, Generic, Eq)
 
@@ -147,9 +140,6 @@ instance FromJSON ReloadMetadata where
       <*> o
       .:? "recreate_event_triggers"
       .!= RSReloadList mempty
-      <*> o
-      .:? "reload_data_connectors"
-      .!= reloadAllDataConnectors
 
 -- | Undocumented Metadata API action which serializes the entire
 -- 'SchemaCache'.

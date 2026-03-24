@@ -1,5 +1,0 @@
-tls_allowlist:
-- suffix: null
-  permissions:
-  - self-signed
-  host: scriptonist.dev

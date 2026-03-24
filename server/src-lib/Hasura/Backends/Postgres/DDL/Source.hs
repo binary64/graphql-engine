@@ -62,20 +62,11 @@ import Hasura.Table.Metadata (TableMetadata (..))
 import Language.Haskell.TH.Lib qualified as TH
 import Language.Haskell.TH.Syntax qualified as TH
 
--- | We differentiate the handling of metadata between Citus, Cockroach and Vanilla
--- Postgres because Citus imposes limitations on the types of joins that it
--- permits, which then limits the types of relations that we can track.
 class ToMetadataFetchQuery (pgKind :: PostgresKind) where
   tableMetadata :: PG.Query
 
 instance ToMetadataFetchQuery 'Vanilla where
   tableMetadata = $(makeRelativeToProject "src-rsr/pg_table_metadata.sql" >>= PG.sqlFromFile)
-
-instance ToMetadataFetchQuery 'Citus where
-  tableMetadata = $(makeRelativeToProject "src-rsr/citus_table_metadata.sql" >>= PG.sqlFromFile)
-
-instance ToMetadataFetchQuery 'Cockroach where
-  tableMetadata = $(makeRelativeToProject "src-rsr/cockroach_table_metadata.sql" >>= PG.sqlFromFile)
 
 resolveSourceConfig ::
   (MonadIO m, MonadResolveSource m) =>
@@ -351,11 +342,6 @@ upMigrationsUntil43 =
              ++ migrationsFromFile [42 .. 43]
    )
 
--- | We differentiate for CockroachDB and other PG implementations
--- as our CockroachDB table fetching SQL does not require table information,
--- and fails if it receives unused prepared arguments
--- this distinction should no longer be necessary if this issue is resolved:
--- https://github.com/cockroachdb/cockroach/issues/86375
 class FetchTableMetadata (pgKind :: PostgresKind) where
   fetchTableMetadata ::
     forall m.
@@ -368,12 +354,6 @@ class FetchTableMetadata (pgKind :: PostgresKind) where
 
 instance FetchTableMetadata 'Vanilla where
   fetchTableMetadata = pgFetchTableMetadata
-
-instance FetchTableMetadata 'Citus where
-  fetchTableMetadata = pgFetchTableMetadata
-
-instance FetchTableMetadata 'Cockroach where
-  fetchTableMetadata = cockroachFetchTableMetadata
 
 -- | Fetch Postgres metadata of all user tables
 pgFetchTableMetadata ::
@@ -394,25 +374,6 @@ pgFetchTableMetadata tables = do
     $ flip map results
     $ \(schema, table, PG.ViaJSON info) -> (QualifiedObject schema table, info)
 
--- | Fetch Cockroach metadata of all user tables
-cockroachFetchTableMetadata ::
-  forall pgKind m.
-  (Backend ('Postgres pgKind), ToMetadataFetchQuery pgKind, MonadTx m) =>
-  Set.HashSet QualifiedTable ->
-  m (DBTablesMetadata ('Postgres pgKind))
-cockroachFetchTableMetadata _tables = do
-  results <-
-    liftTx
-      $ PG.rawQE
-        defaultTxErrorHandler
-        (tableMetadata @pgKind)
-        []
-        True
-  pure
-    $ HashMap.fromList
-    $ flip map results
-    $ \(schema, table, PG.ViaJSON info) -> (QualifiedObject schema table, info)
-
 class FetchFunctionMetadata (pgKind :: PostgresKind) where
   fetchFunctionMetadata ::
     (MonadTx m) =>
@@ -421,12 +382,6 @@ class FetchFunctionMetadata (pgKind :: PostgresKind) where
 
 instance FetchFunctionMetadata 'Vanilla where
   fetchFunctionMetadata = pgFetchFunctionMetadata
-
-instance FetchFunctionMetadata 'Citus where
-  fetchFunctionMetadata = pgFetchFunctionMetadata
-
-instance FetchFunctionMetadata 'Cockroach where
-  fetchFunctionMetadata _ = pure mempty
 
 -- | Fetch Postgres metadata for all user functions
 pgFetchFunctionMetadata :: (MonadTx m) => Set.HashSet QualifiedFunction -> m (DBFunctionsMetadata ('Postgres pgKind))

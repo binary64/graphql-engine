@@ -410,13 +410,14 @@ remoteSchemasToOrdJSONList = listToMaybeArraySort remoteSchemaQToOrdJSON _rsmNam
             <> catMaybes [maybeCommentToMaybeOrdPair permComment]
 
         remoteSchemaDefToOrdJSON :: RemoteSchemaDef -> AO.Value
-        remoteSchemaDefToOrdJSON (RemoteSchemaDef url urlFromEnv headers frwrdClientHdrs timeout customization) =
+        remoteSchemaDefToOrdJSON (RemoteSchemaDef url urlFromEnv headers frwrdClientHdrs timeout customization schemaFile) =
           AO.object
             $ catMaybes
               [ maybeToPair "url" url,
                 maybeToPair "url_from_env" urlFromEnv,
                 maybeToPair "timeout_seconds" timeout,
                 maybeToPair "customization" customization,
+                maybeToPair "schema_file" schemaFile,
                 headers >>= listToMaybeOrdPair "headers" AO.toOrdered
               ]
             <> [("forward_client_headers", AO.toOrdered frwrdClientHdrs) | frwrdClientHdrs]

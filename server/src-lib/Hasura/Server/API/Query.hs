@@ -207,7 +207,7 @@ runQuery appContext sc query = do
   let dynamicConfig = buildCacheDynamicConfig appContext
 
   MetadataWithResourceVersion metadata currentResourceVersion <- liftEitherM fetchMetadata
-  ((result, updatedMetadata), modSchemaCache, invalidations, sourcesIntrospection, schemaRegistryAction) <-
+  ((result, updatedMetadata), modSchemaCache, invalidations, sourcesIntrospection) <-
     runQueryM (acEnvironment appContext) (acSchemaSampledFeatureFlags appContext) (acSQLGenCtx appContext) query
       -- TODO: remove this straight runReaderT that provides no actual new info
       & flip runReaderT logger
@@ -224,14 +224,10 @@ runQuery appContext sc query = do
         -- save sources introspection to stored-introspection DB
         saveSourcesIntrospection logger sourcesIntrospection newResourceVersion
 
-        (_, modSchemaCache', _, _, _) <-
+        (_, modSchemaCache', _, _) <-
           Tracing.newSpan "setMetadataResourceVersionInSchemaCache" Tracing.SKInternal
             $ setMetadataResourceVersionInSchemaCache newResourceVersion
             & runCacheRWT dynamicConfig modSchemaCache
-
-        -- run schema registry action
-        for_ schemaRegistryAction $ \action -> do
-          liftIO $ action newResourceVersion (scInconsistentObjs (lastBuiltSchemaCache modSchemaCache')) updatedMetadata
 
         pure (result, modSchemaCache')
       MaintenanceModeEnabled () ->

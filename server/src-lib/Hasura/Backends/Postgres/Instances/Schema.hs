@@ -78,7 +78,7 @@ import Hasura.RQL.IR.Select qualified as IR
 import Hasura.RQL.IR.Update qualified as IR
 import Hasura.RQL.IR.Value qualified as IR
 import Hasura.RQL.Types.Backend (Backend (..))
-import Hasura.RQL.Types.BackendType (BackendType (Postgres), PostgresKind (Citus, Cockroach, Vanilla))
+import Hasura.RQL.Types.BackendType (BackendType (Postgres), PostgresKind (Vanilla))
 import Hasura.RQL.Types.Column
 import Hasura.RQL.Types.NamingCase
 import Hasura.RQL.Types.Schema.Options qualified as Options
@@ -156,20 +156,6 @@ instance PostgresSchema 'Vanilla where
   pgkBuildTableRelayQueryFields = buildTableRelayQueryFields
   pgkBuildFunctionRelayQueryFields = buildFunctionRelayQueryFields
   pgkRelayExtension = Just ()
-  pgkBuildTableQueryAndSubscriptionFields = GSB.buildTableQueryAndSubscriptionFields
-  pgkBuildTableStreamingSubscriptionFields = GSB.buildTableStreamingSubscriptionFields
-
-instance PostgresSchema 'Citus where
-  pgkBuildTableRelayQueryFields _ _ _ _ _ = pure []
-  pgkBuildFunctionRelayQueryFields _ _ _ _ _ = pure []
-  pgkRelayExtension = Nothing
-  pgkBuildTableQueryAndSubscriptionFields = GSB.buildTableQueryAndSubscriptionFields
-  pgkBuildTableStreamingSubscriptionFields = GSB.buildTableStreamingSubscriptionFields
-
-instance PostgresSchema 'Cockroach where
-  pgkBuildTableRelayQueryFields _ _ _ _ _ = pure []
-  pgkBuildFunctionRelayQueryFields _ _ _ _ _ = pure []
-  pgkRelayExtension = Nothing
   pgkBuildTableQueryAndSubscriptionFields = GSB.buildTableQueryAndSubscriptionFields
   pgkBuildTableStreamingSubscriptionFields = GSB.buildTableStreamingSubscriptionFields
 

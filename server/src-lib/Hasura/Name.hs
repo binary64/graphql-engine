@@ -97,11 +97,6 @@ __bool_exp = [G.name|_bool_exp|]
 __comparison_exp :: G.Name
 __comparison_exp = [G.name|_comparison_exp|]
 
-__BigQuery_comparison_exp :: G.Name
-__BigQuery_comparison_exp = [G.name|_BigQuery_comparison_exp|]
-
-__MSSQL_comparison_exp :: G.Name
-__MSSQL_comparison_exp = [G.name|_MSSQL_comparison_exp|]
 
 __cast :: G.Name
 __cast = [G.name|_cast|]

@@ -1062,7 +1062,7 @@ getOneOffScheduledEventsTx pagination statuses getRowsCount orderByList = do
             S.selWhere = Just $ S.WhereFrag statusFilter,
             S.selOrderBy = Just orderByExp
           }
-      sql = PG.fromBuilder $ toSQL $ mkPaginationSelectExp select pagination getRowsCount
+      sql = PG.fromText . TB.run $ toSQL $ mkPaginationSelectExp select pagination getRowsCount
   executeWithOptionalTotalCount sql getRowsCount
 
 getCronEventsTx ::
@@ -1086,7 +1086,7 @@ getCronEventsTx triggerName pagination status getRowsCount orderByList = do
             S.selWhere = Just $ S.WhereFrag $ S.BEBin S.AndOp triggerNameFilter statusFilter,
             S.selOrderBy = Just orderByExp
           }
-      sql = PG.fromBuilder $ toSQL $ mkPaginationSelectExp select pagination getRowsCount
+      sql = PG.fromText . TB.run $ toSQL $ mkPaginationSelectExp select pagination getRowsCount
   executeWithOptionalTotalCount sql getRowsCount
 
 deleteScheduledEventTx ::
@@ -1136,7 +1136,7 @@ getScheduledEventInvocationsTx ::
   PG.TxE QErr (WithOptionalTotalCount [ScheduledEventInvocation])
 getScheduledEventInvocationsTx getEventInvocations = do
   let eventsTables = EventTables oneOffInvocationsTable cronInvocationsTable cronEventsTable
-      sql = PG.fromBuilder $ toSQL $ getScheduledEventsInvocationsQuery eventsTables getEventInvocations
+      sql = PG.fromText . TB.run $ toSQL $ getScheduledEventsInvocationsQuery eventsTables getEventInvocations
   executeWithOptionalTotalCount sql (_geiGetRowsCount getEventInvocations)
   where
     oneOffInvocationsTable = QualifiedObject "hdb_catalog" $ TableName "hdb_scheduled_event_invocation_logs"

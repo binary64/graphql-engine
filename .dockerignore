@@ -6,3 +6,24 @@
 /server/tests-py/.pytest-cache
 /server/tests-py/__pycache__
 /server/tests-py/node_modules
+
+# Not needed for server Docker build
+/v3
+/docs
+/frontend
+/console
+/rfcs
+/assets
+/community
+/contrib
+/dc-agents
+/cli
+/cli-ext
+/translations
+/install-manifests
+/docker-compose
+/architecture
+/packaging
+/releases
+/scripts
+/nix

@@ -18,7 +18,6 @@ import Data.Text qualified as T
 import Data.Text.Extended (ToTxt (..))
 import Data.Tuple (swap)
 import Hasura.Authentication.User (UserInfo)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Base.Error
 import Hasura.CredentialCache
 import Hasura.EncJSON

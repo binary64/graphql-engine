@@ -29,7 +29,6 @@ import Hasura.RQL.Types.BackendType (BackendType (..))
 import Hasura.RQL.Types.SchemaCache
 import Hasura.RQL.Types.SchemaCache.Build
 import Hasura.RQL.Types.Source
-import Hasura.SQL.BackendMap qualified as BackendMap
 import Hasura.Server.AppStateRef
   ( AppStateRef,
     getAppContext,
@@ -298,7 +297,7 @@ refreshSchemaCache
         let dynamicConfig = buildCacheDynamicConfig appContext
         -- the instance which triggered the schema sync event would have stored
         -- the source introspection, hence we can ignore it here
-        (msg, cache, _, _sourcesIntrospection, _schemaRegistryAction) <-
+        (msg, cache, _, _sourcesIntrospection) <-
           runCacheRWT dynamicConfig rebuildableCache $ do
             schemaCache <- askSchemaCache
             let engineResourceVersion = scMetadataResourceVersion schemaCache
@@ -349,11 +348,7 @@ refreshSchemaCache
                             CacheInvalidations
                               { ciMetadata = True,
                                 ciRemoteSchemas = HS.fromList $ getAllRemoteSchemas schemaCache,
-                                ciSources = HS.fromList $ HashMap.keys $ scSources schemaCache,
-                                ciDataConnectors =
-                                  maybe mempty (HS.fromList . HashMap.keys . unBackendInfoWrapper)
-                                    $ BackendMap.lookup @'DataConnector
-                                    $ scBackendCache schemaCache
+                                ciSources = HS.fromList $ HashMap.keys $ scSources schemaCache
                               }
                   buildSchemaCacheWithOptions CatalogSync cacheInvalidations metadata (Just latestResourceVersion)
                   setMetadataResourceVersionInSchemaCache latestResourceVersion

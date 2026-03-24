@@ -30,7 +30,6 @@ import Data.Environment qualified as E
 import Data.HashSet qualified as Set
 import Database.PG.Query qualified as PG
 import Hasura.Authentication.Role (RoleName)
-import Hasura.Backends.DataConnector.Agent.Client (AgentLicenseKey)
 import Hasura.Base.Error
 import Hasura.CredentialCache
 import Hasura.Eventing.Common (LockedEventsCtx)
@@ -375,7 +374,6 @@ buildCacheStaticConfig AppEnv {..} =
       -- Native Queries are always enabled for Postgres in the OSS edition.
       _cscAreNativeQueriesEnabled = \case
         Postgres Vanilla -> True
-        DataConnector -> True
         _ -> False,
       _cscAreStoredProceduresEnabled = False
     }

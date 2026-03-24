@@ -57,7 +57,7 @@ import Hasura.Incremental qualified as Inc
 import Hasura.LogicalModel.Types (LogicalModelLocation (..), LogicalModelName)
 import Hasura.Prelude
 import Hasura.RQL.DDL.Schema.Cache.Config
-import Hasura.RQL.DDL.SchemaRegistry (SchemaRegistryAction)
+-- import Hasura.RQL.DDL.SchemaRegistry (SchemaRegistryAction)
 import Hasura.RQL.Types.Backend
 import Hasura.RQL.Types.BackendType
 import Hasura.RQL.Types.Common
@@ -117,7 +117,7 @@ invalidateKeys CacheInvalidations {..} InvalidationKeys {..} =
     { _ikMetadata = if ciMetadata then Inc.invalidate _ikMetadata else _ikMetadata,
       _ikRemoteSchemas = foldl' (flip invalidate) _ikRemoteSchemas ciRemoteSchemas,
       _ikSources = foldl' (flip invalidate) _ikSources ciSources,
-      _ikBackends = BackendMap.modify @'DataConnector invalidateDataConnectors _ikBackends
+      _ikBackends = _ikBackends
     }
   where
     invalidate ::
@@ -126,10 +126,6 @@ invalidateKeys CacheInvalidations {..} InvalidationKeys {..} =
       HashMap a Inc.InvalidationKey ->
       HashMap a Inc.InvalidationKey
     invalidate = HashMap.alter $ Just . maybe Inc.initialInvalidationKey Inc.invalidate
-
-    invalidateDataConnectors :: BackendInvalidationKeysWrapper 'DataConnector -> BackendInvalidationKeysWrapper 'DataConnector
-    invalidateDataConnectors (BackendInvalidationKeysWrapper invalidationKeys) =
-      BackendInvalidationKeysWrapper $ foldl' (flip invalidate) invalidationKeys ciDataConnectors
 
 data TableBuildInput b = TableBuildInput
   { _tbiName :: TableName b,
@@ -208,7 +204,6 @@ $(makeLenses ''BuildOutputs)
 data CacheBuildParams = CacheBuildParams
   { _cbpManager :: HTTP.Manager,
     _cbpPGSourceResolver :: SourceResolver ('Postgres 'Vanilla),
-    _cbpMSSQLSourceResolver :: SourceResolver 'MSSQL,
     _cbpStaticConfig :: CacheStaticConfig
   }
 
@@ -233,7 +228,6 @@ instance ProvidesNetwork CacheBuild where
 
 instance MonadResolveSource CacheBuild where
   getPGSourceResolver = asks _cbpPGSourceResolver
-  getMSSQLSourceResolver = asks _cbpMSSQLSourceResolver
 
 runCacheBuild ::
   ( MonadIO m,
@@ -259,7 +253,6 @@ runCacheBuildM m = do
     CacheBuildParams
       <$> askHTTPManager
       <*> getPGSourceResolver
-      <*> getMSSQLSourceResolver
       <*> askCacheStaticConfig
   runCacheBuild params m
 
@@ -275,7 +268,7 @@ data SourcesIntrospectionStatus
 data RebuildableSchemaCache = RebuildableSchemaCache
   { lastBuiltSchemaCache :: SchemaCache,
     _rscInvalidationMap :: InvalidationKeys,
-    _rscRebuild :: Inc.Rule (ReaderT BuildReason CacheBuild) (MetadataWithResourceVersion, CacheDynamicConfig, InvalidationKeys, Maybe StoredIntrospection) (SchemaCache, (SourcesIntrospectionStatus, SchemaRegistryAction))
+    _rscRebuild :: Inc.Rule (ReaderT BuildReason CacheBuild) (MetadataWithResourceVersion, CacheDynamicConfig, InvalidationKeys, Maybe StoredIntrospection) (SchemaCache, SourcesIntrospectionStatus)
   }
 
 withRecordDependencies ::

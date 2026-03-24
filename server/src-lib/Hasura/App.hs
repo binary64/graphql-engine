@@ -50,7 +50,7 @@ module Hasura.App
     setCatalogStateTx,
     mkHGEServer,
     mkPgSourceResolver,
-    mkMSSQLSourceResolver,
+
   )
 where
 
@@ -82,14 +82,12 @@ import Data.Set.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock qualified as Clock
-import Database.MSSQL.Pool qualified as MSPool
 import Database.PG.Query qualified as PG
 import Database.PG.Query qualified as Q
 import GHC.AssertNF.CPP
 import Hasura.App.State
 import Hasura.Authentication.Role (adminRoleName)
 import Hasura.Authentication.User (ExtraUserInfo (..), UserInfo (..))
-import Hasura.Backends.MSSQL.Connection
 import Hasura.Backends.Postgres.Connection
 import Hasura.Base.Error
 import Hasura.ClientCredentials (getEEClientCredentialsTx, setEEClientCredentialsTx)
@@ -126,7 +124,7 @@ import Hasura.RQL.DDL.Schema.Cache
 import Hasura.RQL.DDL.Schema.Cache.Common
 import Hasura.RQL.DDL.Schema.Cache.Config
 import Hasura.RQL.DDL.Schema.Catalog
-import Hasura.RQL.DDL.SchemaRegistry qualified as SchemaRegistry
+-- import Hasura.RQL.DDL.SchemaRegistry qualified as SchemaRegistry
 import Hasura.RQL.Types.Allowlist
 import Hasura.RQL.Types.Backend
 import Hasura.RQL.Types.BackendType
@@ -545,12 +543,10 @@ initialiseAppContext env serveOptions AppInit {..} = do
       env
       logger
       (mkPgSourceResolver pgLogger)
-      mkMSSQLSourceResolver
       aiMetadataWithResourceVersion
       cacheStaticConfig
       cacheDynamicConfig
       appEnvManager
-      Nothing
   -- Initialise the 'AppStateRef' from 'RebuildableSchemaCacheRef' and 'RebuildableAppContext'.
   initialiseAppStateRef aiTLSAllowListRef Nothing appEnvServerMetrics rebuildableSchemaCache rebuildableAppCtx
 
@@ -609,29 +605,25 @@ buildFirstSchemaCache ::
   Env.Environment ->
   Logger Hasura ->
   SourceResolver ('Postgres 'Vanilla) ->
-  SourceResolver ('MSSQL) ->
   MetadataWithResourceVersion ->
   CacheStaticConfig ->
   CacheDynamicConfig ->
   HTTP.Manager ->
-  Maybe SchemaRegistry.SchemaRegistryContext ->
   m RebuildableSchemaCache
 buildFirstSchemaCache
   disableNativeQueryValidation
   env
   logger
   pgSourceResolver
-  mssqlSourceResolver
   metadataWithVersion
   cacheStaticConfig
   cacheDynamicConfig
-  httpManager
-  mSchemaRegistryContext = do
-    let cacheBuildParams = CacheBuildParams httpManager pgSourceResolver mssqlSourceResolver cacheStaticConfig
+  httpManager = do
+    let cacheBuildParams = CacheBuildParams httpManager pgSourceResolver cacheStaticConfig
     result <-
       runExceptT
         $ runCacheBuild cacheBuildParams
-        $ buildRebuildableSchemaCache logger env disableNativeQueryValidation metadataWithVersion cacheDynamicConfig mSchemaRegistryContext
+        $ buildRebuildableSchemaCache logger env disableNativeQueryValidation metadataWithVersion cacheDynamicConfig
     result `onLeft` \err -> do
       -- TODO: we used to bundle the first schema cache build with the catalog
       -- migration, using the same error handler for both, meaning that an
@@ -799,7 +791,6 @@ instance WS.MonadWSLog AppM where
 
 instance MonadResolveSource AppM where
   getPGSourceResolver = asks (mkPgSourceResolver . _lsPgLogger . appEnvLoggers)
-  getMSSQLSourceResolver = return mkMSSQLSourceResolver
 
 instance MonadQueryTags AppM where
   createQueryTags _attributes _qtSourceConfig = return $ emptyQueryTagsComment
@@ -1532,19 +1523,4 @@ mkPgSourceResolver pgLogger env sourceName config = runExceptT do
   connInfoWithFinalizer <- liftIO $ mkConnInfoWithFinalizer connInfo (pure ())
   pure $ PGSourceConfig pgExecCtx connInfoWithFinalizer Nothing mempty (pccExtensionsSchema config) mempty ConnTemplate_NotApplicable
 
-mkMSSQLSourceResolver :: SourceResolver 'MSSQL
-mkMSSQLSourceResolver env _name (MSSQLConnConfiguration connInfo _) = runExceptT do
-  let MSSQLConnectionInfo iConnString poolSettings isolationLevel = connInfo
-      connOptions = case poolSettings of
-        MSSQLPoolSettingsPool (MSSQLPoolConnectionSettings {..}) ->
-          MSPool.ConnectionOptionsPool
-            $ MSPool.PoolOptions
-              { poConnections = fromMaybe defaultMSSQLMaxConnections mpsMaxConnections,
-                poStripes = 1,
-                poIdleTime = mpsIdleTimeout
-              }
-        MSSQLPoolSettingsNoPool -> MSPool.ConnectionOptionsNoPool
-  (connString, mssqlPool) <- createMSSQLPool iConnString connOptions env
-  let mssqlExecCtx = mkMSSQLExecCtx isolationLevel mssqlPool NeverResizePool
-      numReadReplicas = 0
-  pure $ MSSQLSourceConfig connString mssqlExecCtx numReadReplicas
+

@@ -31,7 +31,7 @@ import Hasura.Incremental.Internal.Dependency (Dependency (..), selectD)
 import Hasura.Incremental.Select
 import Hasura.Prelude hiding (empty, lookup, modify)
 import Hasura.RQL.Types.BackendTag (BackendTag, HasTag, backendTag, reify)
-import Hasura.RQL.Types.BackendType (BackendType (..), supportedBackends)
+import Hasura.RQL.Types.BackendType (BackendType (..), PostgresKind (..), supportedBackends)
 import Hasura.SQL.AnyBackend
 
 --------------------------------------------------------------------------------
@@ -77,8 +77,8 @@ instance
       -- So I'm applying @i@ to an arbitrary backend type, and attempting to
       -- remove the portion of generated text specific to that type.
       objectNameSuffix =
-        let t = typeableName @(i 'DataConnector)
-         in fromMaybe t $ stripSuffix "__DataConnector" t
+        let t = typeableName @(i ('Postgres 'Vanilla))
+         in fromMaybe t $ stripSuffix "__Postgres_Vanilla" t
 
 instance (i `SatisfiesForAllBackends` FromJSON) => FromJSON (BackendMap i) where
   parseJSON =

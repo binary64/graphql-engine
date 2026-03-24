@@ -141,12 +141,12 @@ countQToTx ::
   (CountQueryP1, DS.Seq PG.PrepArg) ->
   m EncJSON
 countQToTx userInfo (u, p) = do
-  countSQL <- toSQL <$> mkSQLCount userInfo u
+  countSQL <- toSQLTxt <$> mkSQLCount userInfo u
   qRes <-
     liftTx
       $ PG.rawQE
         dmlTxErrorHandler
-        (PG.fromBuilder countSQL)
+        (PG.fromText countSQL)
         (toList p)
         True
   return $ encJFromBuilder $ encodeCount qRes

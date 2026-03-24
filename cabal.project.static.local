@@ -1,0 +1,37 @@
+import: cabal/dev-sh.project.local
+
+-- Override: build static executable (Haskell libs statically linked)
+executable-dynamic: False
+library-vanilla: True
+
+-- Linux lib paths (conda)
+package *
+  extra-lib-dirs: /mnt/arthur/miniforge3/lib
+  extra-include-dirs: /mnt/arthur/miniforge3/include
+  ghc-options: -j2 +RTS -A64m -n2m -RTS
+
+package postgresql-libpq
+  extra-include-dirs: /mnt/arthur/miniforge3/include
+  extra-lib-dirs: /mnt/arthur/miniforge3/lib
+
+package pg-client
+  extra-include-dirs: /mnt/arthur/miniforge3/include
+  extra-lib-dirs: /mnt/arthur/miniforge3/lib
+
+-- Override hedis/Spock/hasql-pool to allow vanilla
+package hedis
+  library-vanilla: True
+package Spock
+  library-vanilla: True
+package hasql-pool
+  library-vanilla: True
+
+-- Allow newer hashtables to avoid gcc 15 incompatibility in 1.3.1
+allow-newer: hashtables
+
+-- Disable debug/coverage for production
+package graphql-engine
+  coverage: false
+  ghc-options: -O1
+
+flags: -optimize-hasura

@@ -79,7 +79,7 @@ import Hasura.RQL.DDL.Schema.Cache.Config
 import Hasura.RQL.DDL.Schema.Cache.Dependencies
 import Hasura.RQL.DDL.Schema.Cache.Fields
 import Hasura.RQL.DDL.Schema.Cache.Permission
-import Hasura.RQL.DDL.SchemaRegistry
+-- import Hasura.RQL.DDL.SchemaRegistry
 import Hasura.RQL.Types.Action
 import Hasura.RQL.Types.Allowlist
 import Hasura.RQL.Types.Backend
@@ -166,12 +166,11 @@ buildRebuildableSchemaCache ::
   DisableNativeQueryValidation ->
   MetadataWithResourceVersion ->
   CacheDynamicConfig ->
-  Maybe SchemaRegistryContext ->
   CacheBuild RebuildableSchemaCache
-buildRebuildableSchemaCache logger env disableNativeQueryValidation metadataWithVersion dynamicConfig mSchemaRegistryContext = do
+buildRebuildableSchemaCache logger env disableNativeQueryValidation metadataWithVersion dynamicConfig = do
   result <-
     flip runReaderT CatalogSync
-      $ Inc.build (buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryContext) (metadataWithVersion, dynamicConfig, initialInvalidationKeys, Nothing)
+      $ Inc.build (buildSchemaCacheRule logger env disableNativeQueryValidation) (metadataWithVersion, dynamicConfig, initialInvalidationKeys, Nothing)
 
   pure $ RebuildableSchemaCache (fst $ Inc.result result) initialInvalidationKeys (Inc.rebuildRule result)
 
@@ -185,7 +184,7 @@ newtype CacheRWT m a
     -- passing the 'CacheDynamicConfig' to every function that builds the cache. It
     -- should ultimately be reduced to 'AppContext', or even better a relevant
     -- subset thereof.
-    CacheRWT (ReaderT CacheDynamicConfig (StateT (RebuildableSchemaCache, CacheInvalidations, SourcesIntrospectionStatus, SchemaRegistryAction) m) a)
+    CacheRWT (ReaderT CacheDynamicConfig (StateT (RebuildableSchemaCache, CacheInvalidations, SourcesIntrospectionStatus) m) a)
   deriving newtype
     ( Functor,
       Applicative,
@@ -229,11 +228,11 @@ runCacheRWT ::
   CacheDynamicConfig ->
   RebuildableSchemaCache ->
   CacheRWT m a ->
-  m (a, RebuildableSchemaCache, CacheInvalidations, SourcesIntrospectionStatus, SchemaRegistryAction)
+  m (a, RebuildableSchemaCache, CacheInvalidations, SourcesIntrospectionStatus)
 runCacheRWT config cache (CacheRWT m) = do
-  (v, (newCache, invalidations, introspection, schemaRegistryAction)) <-
-    runStateT (runReaderT m config) (cache, mempty, SourcesIntrospectionUnchanged, Nothing)
-  pure (v, newCache, invalidations, introspection, schemaRegistryAction)
+  (v, (newCache, invalidations, introspection)) <-
+    runStateT (runReaderT m config) (cache, mempty, SourcesIntrospectionUnchanged)
+  pure (v, newCache, invalidations, introspection)
 
 instance MonadTrans CacheRWT where
   lift = CacheRWT . lift . lift
@@ -289,7 +288,7 @@ instance
   tryBuildSchemaCacheWithOptions buildReason invalidations newMetadata metadataResourceVersion validateNewSchemaCache = CacheRWT do
     dynamicConfig <- ask
     staticConfig <- askCacheStaticConfig
-    (RebuildableSchemaCache lastBuiltSC invalidationKeys rule, oldInvalidations, _, _) <- get
+    (RebuildableSchemaCache lastBuiltSC invalidationKeys rule, oldInvalidations, _) <- get
     let oldMetadataVersion = scMetadataResourceVersion lastBuiltSC
         -- We are purposely putting (-1) as the metadata resource version here. This is because we want to
         -- catch error cases in `withSchemaCache(Read)Update`
@@ -301,13 +300,13 @@ instance
         $ flip runReaderT buildReason
         $ Inc.build rule (metadataWithVersion, dynamicConfig, newInvalidationKeys, storedIntrospection)
 
-    let (schemaCache, (storedIntrospectionStatus, schemaRegistryAction)) = Inc.result result
+    let (schemaCache, storedIntrospectionStatus) = Inc.result result
         prunedInvalidationKeys = pruneInvalidationKeys schemaCache newInvalidationKeys
         !newCache = RebuildableSchemaCache schemaCache prunedInvalidationKeys (Inc.rebuildRule result)
         !newInvalidations = oldInvalidations <> invalidations
 
     case validateNewSchemaCache lastBuiltSC schemaCache of
-      (KeepNewSchemaCache, valueToReturn) -> put (newCache, newInvalidations, storedIntrospectionStatus, schemaRegistryAction) >> pure valueToReturn
+      (KeepNewSchemaCache, valueToReturn) -> put (newCache, newInvalidations, storedIntrospectionStatus) >> pure valueToReturn
       (DiscardNewSchemaCache, valueToReturn) -> pure valueToReturn
     where
       -- Prunes invalidation keys that no longer exist in the schema to avoid leaking memory by
@@ -317,7 +316,7 @@ instance
         name `elem` getAllRemoteSchemas schemaCache
 
   setMetadataResourceVersionInSchemaCache resourceVersion = CacheRWT $ do
-    (rebuildableSchemaCache, invalidations, introspection, schemaRegistryAction) <- get
+    (rebuildableSchemaCache, invalidations, introspection) <- get
     put
       ( rebuildableSchemaCache
           { lastBuiltSchemaCache =
@@ -326,8 +325,7 @@ instance
                 }
           },
         invalidations,
-        introspection,
-        schemaRegistryAction
+        introspection
       )
 
 -- | Generate health checks related cache from sources metadata
@@ -449,21 +447,24 @@ buildSchemaCacheRule ::
   Logger Hasura ->
   Env.Environment ->
   DisableNativeQueryValidation ->
-  Maybe SchemaRegistryContext ->
   (MetadataWithResourceVersion, CacheDynamicConfig, InvalidationKeys, Maybe StoredIntrospection)
-    `arr` (SchemaCache, (SourcesIntrospectionStatus, SchemaRegistryAction))
-buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryContext = proc (MetadataWithResourceVersion metadataNoDefaults interimMetadataResourceVersion, dynamicConfig, invalidationKeys, storedIntrospection) -> do
+    `arr` (SchemaCache, SourcesIntrospectionStatus)
+buildSchemaCacheRule logger env disableNativeQueryValidation = proc (MetadataWithResourceVersion metadataNoDefaults interimMetadataResourceVersion, dynamicConfig, invalidationKeys, storedIntrospection) -> do
   invalidationKeysDep <- Inc.newDependency -< invalidationKeys
   let metadataDefaults = _cdcMetadataDefaults dynamicConfig
       metadata@Metadata {..} = overrideMetadataDefaults metadataNoDefaults metadataDefaults
   metadataDep <- Inc.newDependency -< metadata
 
-  (inconsistentObjects, storedIntrospections, (resolvedOutputs, dependencyInconsistentObjects, resolvedDependencies), ((adminIntrospection, gqlContext, gqlContextUnauth, inconsistentRemoteSchemas), (relayContext, relayContextUnauth), schemaRegistryAction)) <-
+  (inconsistentObjects, storedIntrospections, (resolvedOutputs, dependencyInconsistentObjects, resolvedDependencies), ((adminIntrospection, gqlContext, gqlContextUnauth, inconsistentRemoteSchemas), (relayContext, relayContextUnauth))) <-
     Inc.cache buildOutputsAndSchema -< (metadataDep, dynamicConfig, invalidationKeysDep, storedIntrospection)
 
   let storedIntrospectionStatus = buildSourcesIntrospectionStatus _metaSources _metaRemoteSchemas storedIntrospections
-      (resolvedEndpoints, endpointCollectedInfo) = runIdentity $ runWriterT $ buildRESTEndpoints _metaQueryCollections (InsOrdHashMap.elems _metaRestEndpoints)
-      (cronTriggersMap, cronTriggersCollectedInfo) = runIdentity $ runWriterT $ buildCronTriggers (InsOrdHashMap.elems _metaCronTriggers)
+      -- REST endpoints stubbed out for memory reduction
+      resolvedEndpoints = mempty :: HashMap EndpointName (EndpointMetadata GQLQueryWithText)
+      endpointCollectedInfo = mempty :: Seq CollectItem
+      -- Cron triggers stubbed out for memory reduction
+      cronTriggersMap = mempty
+      cronTriggersCollectedInfo = mempty :: Seq CollectItem
       (openTelemetryInfo, openTelemetryCollectedInfo) = runIdentity $ runWriterT $ buildOpenTelemetry _metaOpenTelemetryConfig
 
       duplicateVariables :: EndpointMetadata a -> Bool
@@ -558,23 +559,7 @@ buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryCont
             scOpenTelemetryConfig = openTelemetryInfo
           }
 
-  -- Write the Project Schema information to schema registry service
-  _ <-
-    bindA
-      -< do
-        buildReason <- ask
-        case buildReason of
-          -- If this is a catalog sync then we know for sure that the schema has more chances of being committed as some
-          -- other instance of Hasura has already committed the schema. So we can safely write the schema to the registry
-          -- service.
-          CatalogSync ->
-            for_ schemaRegistryAction $ \action -> do
-              liftIO $ action interimMetadataResourceVersion (scInconsistentObjs schemaCache) metadata
-          -- If this is a metadata event then we cannot be sure that the schema will be committed. So we write the schema
-          -- to the registry service only after the schema is committed.
-          CatalogUpdate _ -> pure ()
-
-  returnA -< (schemaCache, (storedIntrospectionStatus, schemaRegistryAction))
+  returnA -< (schemaCache, storedIntrospectionStatus)
   where
     -- See Note [Avoiding GraphQL schema rebuilds when changing irrelevant Metadata]
     buildOutputsAndSchema = proc (metadataDep, dynamicConfig, invalidationKeysDep, storedIntrospection) -> do
@@ -595,8 +580,6 @@ buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryCont
               (_boRemoteSchemas resolvedOutputs)
               (_boActions resolvedOutputs)
               (_boCustomTypes resolvedOutputs)
-              mSchemaRegistryContext
-              logger
       returnA -< (inconsistentObjects, storedIntrospections, out2, out3)
 
     resolveBackendInfo' ::
@@ -1434,12 +1417,12 @@ buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryCont
             . withRecordInconsistencyM (MetadataObject (MOOpenTelemetry objTy) (toJSON fld))
             . liftEither
 
-    buildRESTEndpoints ::
+    _buildRESTEndpoints ::
       (MonadWriter (Seq CollectItem) m) =>
       QueryCollections ->
       [CreateEndpoint] ->
       m (HashMap EndpointName (EndpointMetadata GQLQueryWithText))
-    buildRESTEndpoints collections endpoints = buildInfoMapM _ceName mkEndpointMetadataObject buildEndpoint endpoints
+    _buildRESTEndpoints collections endpoints = buildInfoMapM _ceName mkEndpointMetadataObject buildEndpoint endpoints
       where
         mkEndpointMetadataObject createEndpoint@EndpointMetadata {..} =
           let objectId = MOEndpoint _ceName
@@ -1448,14 +1431,14 @@ buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryCont
         buildEndpoint createEndpoint@EndpointMetadata {..} = do
           let -- QueryReference collName queryName = _edQuery endpoint
               addContext err = "in endpoint " <> toTxt _ceName <> ": " <> err
-          withRecordInconsistencyM (mkEndpointMetadataObject createEndpoint) $ modifyErr addContext $ resolveEndpoint collections createEndpoint
+          withRecordInconsistencyM (mkEndpointMetadataObject createEndpoint) $ modifyErr addContext $ _resolveEndpoint collections createEndpoint
 
-    resolveEndpoint ::
+    _resolveEndpoint ::
       (QErrM m) =>
       InsOrdHashMap CollectionName CreateCollection ->
       EndpointMetadata QueryReference ->
       m (EndpointMetadata GQLQueryWithText)
-    resolveEndpoint collections = traverse $ \(QueryReference collName queryName) -> do
+    _resolveEndpoint collections = traverse $ \(QueryReference collName queryName) -> do
       collection <-
         onNothing
           (InsOrdHashMap.lookup collName collections)
@@ -1662,13 +1645,13 @@ buildSchemaCacheRule logger env disableNativeQueryValidation mSchemaRegistryCont
                       triggerDefinition
                       primaryKey
 
-    buildCronTriggers ::
+    _buildCronTriggers ::
       (MonadWriter (Seq CollectItem) m) =>
       [CronTriggerMetadata] ->
       m (HashMap TriggerName CronTriggerInfo)
-    buildCronTriggers = buildInfoMapM ctName mkCronTriggerMetadataObject buildCronTrigger
+    _buildCronTriggers = buildInfoMapM ctName mkCronTriggerMetadataObject _buildCronTrigger
       where
-        buildCronTrigger cronTrigger = do
+        _buildCronTrigger cronTrigger = do
           let triggerName = triggerNameToTxt $ ctName cronTrigger
               addCronTriggerContext e = "in cron trigger " <> triggerName <> ": " <> e
           withRecordInconsistencyM (mkCronTriggerMetadataObject cronTrigger)
