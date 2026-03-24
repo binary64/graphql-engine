@@ -6,7 +6,7 @@ Minimal Hasura: PostgreSQL + GraphQL + 0-or-1 local-file remote schema. Remove e
 ## Phase 1: Easy removals (no cascading)
 - [x] Remove `dc-agents/` directory
 - [x] Remove `server/lib/dc-api/` from cabal.project packages list
-- [ ] Remove telemetry phone-home (`Server/Telemetry.hs`, `Server/Telemetry/`)
+- [x] Remove telemetry phone-home (`Server/Telemetry.hs`, `Server/Telemetry/`)
 - [ ] Remove OpenTelemetry (`RQL/DDL/OpenTelemetry.hs`, `RQL/Types/OpenTelemetry.hs`)
 
 ## Phase 2: Prometheus/Metrics (19 import sites)
